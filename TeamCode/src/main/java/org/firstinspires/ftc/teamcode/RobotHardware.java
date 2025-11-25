@@ -23,11 +23,11 @@ Servo
 1 - pitch (Camera Pitch)
 2 -
 3 -
-4 -
+4 - ltl (Light Left)
 5 - ltm (Light Middle)
 
 I2C
-0 -
+0 - imu
 1 -
 2 -
 3 - cam (Camera)
@@ -46,7 +46,7 @@ Motor
 Servo
 0 - kr (Kicker Right)
 1 - kl (Kicker Left)
-2 - ltr
+2 - ltr (Light Right)
 3 -
 4 -
 5 - km (Kicker Middle)
