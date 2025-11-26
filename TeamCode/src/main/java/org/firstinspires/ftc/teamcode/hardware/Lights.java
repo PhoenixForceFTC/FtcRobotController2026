@@ -14,6 +14,9 @@ public class Lights
     //--- Blink Speeds (in seconds)
     private static final double BLINK_FAST_INTERVAL = 0.15;
     private static final double BLINK_SLOW_INTERVAL = 0.5;
+
+    //--- Pulse Pattern Settings
+    private static final double PULSE_SOLID_DURATION = 2.0;
     //endregion
 
     //region --- Enums ---
@@ -21,6 +24,7 @@ public class Lights
     {
         OFF(0.0),
         RED(0.29),
+        ORANGE(0.33),
         YELLOW(0.38),
         GREEN(0.51),
         BLUE(0.61),
@@ -44,7 +48,8 @@ public class Lights
     {
         NONE,
         SLOW,
-        FAST
+        FAST,
+        PULSE
     }
     //endregion
 
@@ -74,6 +79,13 @@ public class Lights
     private ElapsedTime _timerFast = new ElapsedTime();
     private boolean _slowOn = true;
     private boolean _fastOn = true;
+
+    //--- Pulse pattern state (blink X times, then solid for Y seconds)
+    private ElapsedTime _timerPulse = new ElapsedTime();
+    private int _pulseBlinkCount = 0;
+    private int _pulseBlinkTarget = 4;
+    private boolean _pulseOn = true;
+    private boolean _pulseInSolidPhase = false;
 
     //--- Test mode state
     private double _testPosition = 0.0;
@@ -106,44 +118,99 @@ public class Lights
     public void initialize()
     {
         //--- Set default light colors on initialization
-        setAll(Color.OFF);
+        setLeft(Color.RED);
+        setMiddle(Color.ORANGE);
+        setRight(Color.YELLOW);
     }
     //endregion
 
     //region --- Run (call this in your main loop) ---
     public void run()
     {
-        //--- Update shared timers
+        //--- Update shared timers for SLOW blink
         if (_timerSlow.seconds() >= BLINK_SLOW_INTERVAL)
         {
             _slowOn = !_slowOn;
             _timerSlow.reset();
         }
+
+        //--- Update shared timers for FAST blink
         if (_timerFast.seconds() >= BLINK_FAST_INTERVAL)
         {
             _fastOn = !_fastOn;
             _timerFast.reset();
         }
 
+        //--- Update PULSE pattern state
+        if (_pulseInSolidPhase)
+        {
+            //--- In solid phase, wait for duration then restart blinking
+            if (_timerPulse.seconds() >= PULSE_SOLID_DURATION)
+            {
+                _pulseInSolidPhase = false;
+                _pulseBlinkCount = 0;
+                _pulseOn = true;
+                _timerPulse.reset();
+            }
+        }
+        else
+        {
+            //--- In blink phase
+            if (_timerPulse.seconds() >= BLINK_SLOW_INTERVAL)
+            {
+                _pulseOn = !_pulseOn;
+                _timerPulse.reset();
+
+                //--- Count each full blink cycle (on->off counts as 1)
+                if (!_pulseOn)
+                {
+                    _pulseBlinkCount++;
+                    if (_pulseBlinkCount >= _pulseBlinkTarget)
+                    {
+                        //--- Done blinking, switch to solid phase
+                        _pulseInSolidPhase = true;
+                        _pulseOn = true;
+                        _timerPulse.reset();
+                    }
+                }
+            }
+        }
+
         //--- Handle left light blinking
         if (_leftBlink != Blink.NONE)
         {
-            boolean isOn = (_leftBlink == Blink.SLOW) ? _slowOn : _fastOn;
+            boolean isOn = getBlinkState(_leftBlink);
             _servoLightLeft.setPosition(isOn ? _leftColor.getPosition() : Color.OFF.getPosition());
         }
 
         //--- Handle middle light blinking
         if (_middleBlink != Blink.NONE)
         {
-            boolean isOn = (_middleBlink == Blink.SLOW) ? _slowOn : _fastOn;
+            boolean isOn = getBlinkState(_middleBlink);
             _servoLightMiddle.setPosition(isOn ? _middleColor.getPosition() : Color.OFF.getPosition());
         }
 
         //--- Handle right light blinking
         if (_rightBlink != Blink.NONE)
         {
-            boolean isOn = (_rightBlink == Blink.SLOW) ? _slowOn : _fastOn;
+            boolean isOn = getBlinkState(_rightBlink);
             _servoLightRight.setPosition(isOn ? _rightColor.getPosition() : Color.OFF.getPosition());
+        }
+    }
+
+    //--- Helper to get the current on/off state for a blink mode
+    private boolean getBlinkState(Blink blink)
+    {
+        switch (blink)
+        {
+            case SLOW:
+                return _slowOn;
+            case FAST:
+                return _fastOn;
+            case PULSE:
+                return _pulseOn;
+            default:
+                return true;
         }
     }
     //endregion
@@ -177,6 +244,13 @@ public class Lights
         }
     }
 
+    public void setLeft(Color color, int pulseCount)
+    {
+        _leftColor = color;
+        _leftBlink = Blink.PULSE;
+        setPulseCount(pulseCount);
+    }
+
     public void setMiddle(Color color)
     {
         setMiddle(color, Blink.NONE);
@@ -190,6 +264,13 @@ public class Lights
         {
             _servoLightMiddle.setPosition(color.getPosition());
         }
+    }
+
+    public void setMiddle(Color color, int pulseCount)
+    {
+        _middleColor = color;
+        _middleBlink = Blink.PULSE;
+        setPulseCount(pulseCount);
     }
 
     public void setRight(Color color)
@@ -207,6 +288,13 @@ public class Lights
         }
     }
 
+    public void setRight(Color color, int pulseCount)
+    {
+        _rightColor = color;
+        _rightBlink = Blink.PULSE;
+        setPulseCount(pulseCount);
+    }
+
     //endregion
 
     //region --- Public Methods - Set All Lights with Blink ---
@@ -216,6 +304,27 @@ public class Lights
         setLeft(color, blink);
         setMiddle(color, blink);
         setRight(color, blink);
+    }
+
+    public void setAll(Color color, int pulseCount)
+    {
+        setPulseCount(pulseCount);
+        _leftColor = color;
+        _leftBlink = Blink.PULSE;
+        _middleColor = color;
+        _middleBlink = Blink.PULSE;
+        _rightColor = color;
+        _rightBlink = Blink.PULSE;
+    }
+
+    //--- Set the pulse count and reset the pulse state
+    private void setPulseCount(int count)
+    {
+        _pulseBlinkTarget = count + 1;
+        _pulseBlinkCount = 0;
+        _pulseOn = true;
+        _pulseInSolidPhase = false;
+        _timerPulse.reset();
     }
 
     //endregion
@@ -296,7 +405,7 @@ public class Lights
             //--- Pattern 4: Blue (solid) Red (solid) Yellow (fast blink)
             setLeft(Color.BLUE);
             setMiddle(Color.RED);
-            setRight(Color.YELLOW, Blink.SLOW);
+            setRight(Color.YELLOW, 3);
             _telemetry.addData("Light Pattern", "X: Blue Red Yellow(fast)");
         }
     }

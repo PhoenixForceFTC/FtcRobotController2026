@@ -85,11 +85,6 @@ public class TeleOp_Mecanum extends LinearOpMode
         waitForStart();
         _runtime.reset();
 
-        // Set initial light colors
-        _robot.lights.setLeft(Lights.Color.GREEN);
-        _robot.lights.setRight(Lights.Color.PURPLE);
-        _robot.lights.setMiddle(Lights.Color.GREEN);
-
         //------------------------------------------------------------------------------------------
         //--- Hardware Initialize
         //------------------------------------------------------------------------------------------
