@@ -90,13 +90,11 @@ public class Lights
     private Blink _middleBlink = Blink.NONE;
     private Blink _rightBlink = Blink.NONE;
 
-    private ElapsedTime _timerLeft = new ElapsedTime();
-    private ElapsedTime _timerMiddle = new ElapsedTime();
-    private ElapsedTime _timerRight = new ElapsedTime();
-
-    private boolean _leftOn = true;
-    private boolean _middleOn = true;
-    private boolean _rightOn = true;
+    //--- Shared timers so all lights blink in sync
+    private ElapsedTime _timerSlow = new ElapsedTime();
+    private ElapsedTime _timerFast = new ElapsedTime();
+    private boolean _slowOn = true;
+    private boolean _fastOn = true;
 
     //--- Test mode state
     private double _testPosition = 0.0;
@@ -136,37 +134,37 @@ public class Lights
     //region --- Run (call this in your main loop) ---
     public void run()
     {
+        //--- Update shared timers
+        if (_timerSlow.seconds() >= BLINK_SLOW_INTERVAL)
+        {
+            _slowOn = !_slowOn;
+            _timerSlow.reset();
+        }
+        if (_timerFast.seconds() >= BLINK_FAST_INTERVAL)
+        {
+            _fastOn = !_fastOn;
+            _timerFast.reset();
+        }
+
         //--- Handle left light blinking
         if (_leftBlink != Blink.NONE)
         {
-            if (_timerLeft.seconds() >= _leftBlink.getInterval())
-            {
-                _leftOn = !_leftOn;
-                _timerLeft.reset();
-            }
-            _servoLightLeft.setPosition(_leftOn ? _leftColor.getPosition() : COLOR_OFF);
+            boolean isOn = (_leftBlink == Blink.SLOW) ? _slowOn : _fastOn;
+            _servoLightLeft.setPosition(isOn ? _leftColor.getPosition() : COLOR_OFF);
         }
 
         //--- Handle middle light blinking
         if (_middleBlink != Blink.NONE)
         {
-            if (_timerMiddle.seconds() >= _middleBlink.getInterval())
-            {
-                _middleOn = !_middleOn;
-                _timerMiddle.reset();
-            }
-            _servoLightMiddle.setPosition(_middleOn ? _middleColor.getPosition() : COLOR_OFF);
+            boolean isOn = (_middleBlink == Blink.SLOW) ? _slowOn : _fastOn;
+            _servoLightMiddle.setPosition(isOn ? _middleColor.getPosition() : COLOR_OFF);
         }
 
         //--- Handle right light blinking
         if (_rightBlink != Blink.NONE)
         {
-            if (_timerRight.seconds() >= _rightBlink.getInterval())
-            {
-                _rightOn = !_rightOn;
-                _timerRight.reset();
-            }
-            _servoLightRight.setPosition(_rightOn ? _rightColor.getPosition() : COLOR_OFF);
+            boolean isOn = (_rightBlink == Blink.SLOW) ? _slowOn : _fastOn;
+            _servoLightRight.setPosition(isOn ? _rightColor.getPosition() : COLOR_OFF);
         }
     }
     //endregion
@@ -198,11 +196,6 @@ public class Lights
         {
             _servoLightLeft.setPosition(color.getPosition());
         }
-        else
-        {
-            _timerLeft.reset();
-            _leftOn = true;
-        }
     }
 
     public void setMiddle(Color color)
@@ -218,11 +211,6 @@ public class Lights
         {
             _servoLightMiddle.setPosition(color.getPosition());
         }
-        else
-        {
-            _timerMiddle.reset();
-            _middleOn = true;
-        }
     }
 
     public void setRight(Color color)
@@ -237,11 +225,6 @@ public class Lights
         if (blink == Blink.NONE)
         {
             _servoLightRight.setPosition(color.getPosition());
-        }
-        else
-        {
-            _timerRight.reset();
-            _rightOn = true;
         }
     }
 
@@ -353,7 +336,7 @@ public class Lights
             //--- Pattern 4: Blue (solid) Red (solid) Yellow (fast blink)
             setLeft(Color.BLUE);
             setMiddle(Color.RED);
-            setRight(Color.YELLOW, Blink.FAST);
+            setRight(Color.YELLOW, Blink.SLOW);
             _telemetry.addData("Light Pattern", "X: Blue Red Yellow(fast)");
         }
     }
