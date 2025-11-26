@@ -5,6 +5,7 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
+import com.qualcomm.robotcore.util.Range;
 //endregion
 
 //region --- Controls ---
@@ -12,45 +13,45 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 // Joystick 1 -----------------------------------------------------------
 //  - Left Stick        - Mecanum Drive
 //  - Right Stick       - Mecanum Rotate
-//  - Left Stick Click  - Drive Speed High/Low
-//  - Right Stick Click - Rotate Speed High/Low
+//  - Left Stick Click  - Drive Speed High/Low (Hold 1 second)
+//  - Right Stick Click - Rotate Speed High/Low (Hold 1 second)
 //
 //  - Dpad Up           - Move Forward (Slow)
 //  - Dpad Down         - Move Back (Slow)
 //  - Dpad Right        - Move Right (Slow)
 //  - Dpad Left         - Move Left (Slow)
 //
-//  - Right Trigger     - Close Claw
-//  - Right Bumpers     - Open Claw
-//  - Left Trigger      - Intake Arm Out
-//  - Left Bumpers      - Intake Arm Back
+//  - Right Trigger     - Fire 3
+//  - Right Bumpers     - Fire 1
+//  - Left Trigger      - Intake In
+//  - Left Bumpers      - Intake Out
 //
-//  - Y (▲)             - Next Step in Current Mode
-//  - A (✕)             - Previous Step in Current Mode
-//  - X (■)             - Intake In/Out
-//  - B (○)             -
+//  - Y (▲)             -
+//  - A (✕)             -
+//  - X (■)             -
+//  - B (○)             - Auto Shoot Long
 //
 //----------------------------------------------------------------------
 // Joystick 2 -----------------------------------------------------------
 //  - Left Stick        -
 //  - Right Stick       -
-//  - Left Stick Click  - Reset Intake Encoder
-//  - Right Stick Click - Reset Lift Encoder
+//  - Left Stick Click  - ??Reset Intake Encoder
+//  - Right Stick Click - ??Reset Lift Encoder
 //
-//  - Dpad Up           - Manual Lift Up
-//  - Dpad Down         - Manual Lift Down
-//  - Dpad Right        - Manual Intake In
-//  - Dpad Left         - Manual Intake Out
+//  - Dpad Up           - ??Manual Lift Up
+//  - Dpad Down         - ??Manual Lift Down
+//  - Dpad Right        - ??Manual Intake In
+//  - Dpad Left         - ??Manual Intake Out
 //
 //  - Right Trigger     -
-//  - Right Bumpers     - Loosen Intake Claw
+//  - Right Bumpers     -
 //  - Left Trigger      -
-//  - Left Bumpers      - Close Arm Claw
+//  - Left Bumpers      -
 
-//  - Y (▲)             - Mode -> High Basket
-//  - A (✕)             - Mode -> Low Basket
-//  - X (■)             - Mode -> Climbing
-//  - B (○)             - Mode -> Specimens
+//  - Y (▲)             - ??Mode -> High Basket
+//  - A (✕)             - ??Mode -> Low Basket
+//  - X (■)             - ??Mode -> Climbing
+//  - B (○)             - ??Mode -> Specimens
 //----------------------------------------------------------------------
 //endregion
 
@@ -83,6 +84,18 @@ public class TeleOp_Mecanum extends LinearOpMode
         waitForStart();
         _runtime.reset();
 
+        // Set LED Color to green and another to purple
+        // goBILDA Indicator Light Map
+        // Red:0.29 - Yellow: 0.38 - Green: 0.51 - Blue: 0.61 - Purple: 0.69
+
+        _robot.servoLightLeft.setPosition(0.51); // Green
+        _robot.servoLightRight.setPosition(0.69); // Purple
+        _robot.servoLightMiddle.setPosition(0.51); // Purple
+
+
+
+        double middleLightPos = 0.0;
+
         //------------------------------------------------------------------------------------------
         //--- Hardware Initialize
         //------------------------------------------------------------------------------------------
@@ -95,10 +108,26 @@ public class TeleOp_Mecanum extends LinearOpMode
         //------------------------------------------------------------------------------------------
         while (opModeIsActive()) {
 
+            // Control LED with Controller 2 Dpad
+            if (gamepad2.dpad_up)
+            {
+                middleLightPos += 0.01;
+                sleep(200);
+            }
+            else if (gamepad2.dpad_down)
+            {
+                middleLightPos -= 0.01;
+                sleep(200);
+            }
+
+            middleLightPos = Range.clip(middleLightPos, 0.0, 1.0);
+            _robot.servoLightMiddle.setPosition(middleLightPos);
+            
             //------------------------------------------------------------------------------------------
             //--- Start Telemetry Display
             //------------------------------------------------------------------------------------------
             telemetry.addData("Status", "Run Time: " + _runtime.toString());
+            telemetry.addData("Light Middle Pos", middleLightPos);
 
             //------------------------------------------------------------------------------------------
             //--- Drive
@@ -126,4 +155,6 @@ public class TeleOp_Mecanum extends LinearOpMode
             telemetry.update();
         }
     }
+
 }
+
