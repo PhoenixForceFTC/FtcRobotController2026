@@ -5,7 +5,6 @@ package org.firstinspires.ftc.teamcode;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.hardware.Lights;
 //endregion
@@ -86,17 +85,10 @@ public class TeleOp_Mecanum extends LinearOpMode
         waitForStart();
         _runtime.reset();
 
-        // Set LED Color to green and another to purple
-        // goBILDA Indicator Light Map
-        // Red:0.29 - Yellow: 0.38 - Green: 0.51 - Blue: 0.61 - Purple: 0.69
-
+        // Set initial light colors
         _robot.lights.setLeft(Lights.Color.GREEN);
         _robot.lights.setRight(Lights.Color.PURPLE);
         _robot.lights.setMiddle(Lights.Color.GREEN);
-
-
-
-        double middleLightPos = 0.0;
 
         //------------------------------------------------------------------------------------------
         //--- Hardware Initialize
@@ -110,26 +102,20 @@ public class TeleOp_Mecanum extends LinearOpMode
         //------------------------------------------------------------------------------------------
         while (opModeIsActive()) {
 
-            // Control LED with Controller 2 Dpad
-            if (gamepad2.dpad_up)
-            {
-                middleLightPos += 0.01;
-                sleep(200);
-            }
-            else if (gamepad2.dpad_down)
-            {
-                middleLightPos -= 0.01;
-                sleep(200);
-            }
+            //------------------------------------------------------------------------------------------
+            //--- Hardware Run (updates lights, etc.)
+            //------------------------------------------------------------------------------------------
+            _robot.run();
 
-            middleLightPos = Range.clip(middleLightPos, 0.0, 1.0);
-            _robot.lights.setMiddle(middleLightPos);
+            //------------------------------------------------------------------------------------------
+            //--- Test Lights (uncomment to test light colors with gamepad2 dpad)
+            //------------------------------------------------------------------------------------------
+            // _robot.lights.testColors();
             
             //------------------------------------------------------------------------------------------
             //--- Start Telemetry Display
             //------------------------------------------------------------------------------------------
             telemetry.addData("Status", "Run Time: " + _runtime.toString());
-            telemetry.addData("Light Middle Pos", middleLightPos);
 
             //------------------------------------------------------------------------------------------
             //--- Drive
@@ -144,6 +130,8 @@ public class TeleOp_Mecanum extends LinearOpMode
 //            _robot.intake.setLiftArmControls();
 //            _robot.intake.controlIntake();
 //            _robot.intake.setClawControls();
+
+            _robot.lights.testPattern();
 
             //------------------------------------------------------------------------------------------
             //--- Arm

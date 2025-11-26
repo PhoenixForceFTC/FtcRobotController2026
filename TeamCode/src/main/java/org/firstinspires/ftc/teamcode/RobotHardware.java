@@ -231,4 +231,13 @@ public class RobotHardware {
         myOpMode.telemetry.addData(">", "Hardware Initialized");
         myOpMode.telemetry.update();
     }
+
+    /**
+     * Run all hardware that requires periodic updates.
+     * This method must be called in the main loop of the OpMode.
+     */
+    public void run()
+    {
+        lights.run();
+    }
 }
