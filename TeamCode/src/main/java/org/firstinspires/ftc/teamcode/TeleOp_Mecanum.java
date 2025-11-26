@@ -6,6 +6,8 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.teamcode.hardware.Lights;
 //endregion
 
 //region --- Controls ---
@@ -88,9 +90,9 @@ public class TeleOp_Mecanum extends LinearOpMode
         // goBILDA Indicator Light Map
         // Red:0.29 - Yellow: 0.38 - Green: 0.51 - Blue: 0.61 - Purple: 0.69
 
-        _robot.servoLightLeft.setPosition(0.51); // Green
-        _robot.servoLightRight.setPosition(0.69); // Purple
-        _robot.servoLightMiddle.setPosition(0.51); // Purple
+        _robot.lights.setLeft(Lights.Color.GREEN);
+        _robot.lights.setRight(Lights.Color.PURPLE);
+        _robot.lights.setMiddle(Lights.Color.GREEN);
 
 
 
@@ -121,7 +123,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             }
 
             middleLightPos = Range.clip(middleLightPos, 0.0, 1.0);
-            _robot.servoLightMiddle.setPosition(middleLightPos);
+            _robot.lights.setMiddle(middleLightPos);
             
             //------------------------------------------------------------------------------------------
             //--- Start Telemetry Display

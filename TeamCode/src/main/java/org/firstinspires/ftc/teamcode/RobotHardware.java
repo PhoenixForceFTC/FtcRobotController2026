@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.hardware.Drive;
 import org.firstinspires.ftc.teamcode.hardware.Intake;
 import org.firstinspires.ftc.teamcode.hardware.Kickers;
+import org.firstinspires.ftc.teamcode.hardware.Lights;
 //endregion
 
 //region --- Control Hub Config ---
@@ -107,6 +108,7 @@ public class RobotHardware {
     public Intake intake;
     public Drive drive;
     public Kickers kickers;
+    public Lights lights;
 
     //------------------------------------------------------------------------------------------
     //--- Define a constructor that allows the OpMode to pass a reference to itself
@@ -210,6 +212,18 @@ public class RobotHardware {
                 _showInfo
         );
         kickers.initialize();
+
+        lights = new Lights(
+                servoLightLeft,
+                servoLightMiddle,
+                servoLightRight,
+                myOpMode.gamepad1,
+                myOpMode.gamepad2,
+                myOpMode.telemetry,
+                robotVersion,
+                _showInfo
+        );
+        lights.initialize();
 
         //------------------------------------------------------------------------------------------
         //--- Messages
