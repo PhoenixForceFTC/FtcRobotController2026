@@ -11,15 +11,6 @@ import org.firstinspires.ftc.robotcore.external.Telemetry;
 public class Lights
 {
     //region --- Constants ---
-    //--- goBILDA Indicator Light Position Map
-    public static final double COLOR_OFF = 0.0;
-    public static final double COLOR_RED = 0.29;
-    public static final double COLOR_YELLOW = 0.38;
-    public static final double COLOR_GREEN = 0.51;
-    public static final double COLOR_BLUE = 0.61;
-    public static final double COLOR_PURPLE = 0.69;
-    public static final double COLOR_WHITE = 1.0;
-
     //--- Blink Speeds (in seconds)
     private static final double BLINK_FAST_INTERVAL = 0.15;
     private static final double BLINK_SLOW_INTERVAL = 0.5;
@@ -28,13 +19,13 @@ public class Lights
     //region --- Enums ---
     public enum Color
     {
-        OFF(COLOR_OFF),
-        RED(COLOR_RED),
-        YELLOW(COLOR_YELLOW),
-        GREEN(COLOR_GREEN),
-        BLUE(COLOR_BLUE),
-        PURPLE(COLOR_PURPLE),
-        WHITE(COLOR_WHITE);
+        OFF(0.0),
+        RED(0.29),
+        YELLOW(0.38),
+        GREEN(0.51),
+        BLUE(0.61),
+        PURPLE(0.69),
+        WHITE(1.0);
 
         private final double position;
 
@@ -51,21 +42,9 @@ public class Lights
 
     public enum Blink
     {
-        NONE(0),
-        SLOW(BLINK_SLOW_INTERVAL),
-        FAST(BLINK_FAST_INTERVAL);
-
-        private final double interval;
-
-        Blink(double interval)
-        {
-            this.interval = interval;
-        }
-
-        public double getInterval()
-        {
-            return interval;
-        }
+        NONE,
+        SLOW,
+        FAST
     }
     //endregion
 
@@ -150,21 +129,21 @@ public class Lights
         if (_leftBlink != Blink.NONE)
         {
             boolean isOn = (_leftBlink == Blink.SLOW) ? _slowOn : _fastOn;
-            _servoLightLeft.setPosition(isOn ? _leftColor.getPosition() : COLOR_OFF);
+            _servoLightLeft.setPosition(isOn ? _leftColor.getPosition() : Color.OFF.getPosition());
         }
 
         //--- Handle middle light blinking
         if (_middleBlink != Blink.NONE)
         {
             boolean isOn = (_middleBlink == Blink.SLOW) ? _slowOn : _fastOn;
-            _servoLightMiddle.setPosition(isOn ? _middleColor.getPosition() : COLOR_OFF);
+            _servoLightMiddle.setPosition(isOn ? _middleColor.getPosition() : Color.OFF.getPosition());
         }
 
         //--- Handle right light blinking
         if (_rightBlink != Blink.NONE)
         {
             boolean isOn = (_rightBlink == Blink.SLOW) ? _slowOn : _fastOn;
-            _servoLightRight.setPosition(isOn ? _rightColor.getPosition() : COLOR_OFF);
+            _servoLightRight.setPosition(isOn ? _rightColor.getPosition() : Color.OFF.getPosition());
         }
     }
     //endregion
@@ -237,25 +216,6 @@ public class Lights
         setLeft(color, blink);
         setMiddle(color, blink);
         setRight(color, blink);
-    }
-
-    //endregion
-
-    //region --- Public Methods - Set Individual Lights by Position Value ---
-
-    public void setLeft(double positionValue)
-    {
-        _servoLightLeft.setPosition(positionValue);
-    }
-
-    public void setMiddle(double positionValue)
-    {
-        _servoLightMiddle.setPosition(positionValue);
-    }
-
-    public void setRight(double positionValue)
-    {
-        _servoLightRight.setPosition(positionValue);
     }
 
     //endregion
