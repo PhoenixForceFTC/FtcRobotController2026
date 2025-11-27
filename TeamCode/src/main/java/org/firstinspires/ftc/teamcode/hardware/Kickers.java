@@ -93,6 +93,7 @@ public class Kickers
     private boolean _tuneAPressed = false;
     private boolean _tuneBPressed = false;
     private boolean _tuneXPressed = false;
+    private boolean _tuneInitialized = false;
     //endregion
 
     //region --- Constructor ---
@@ -435,13 +436,22 @@ public class Kickers
     //region --- Test Mode ---
 
     //--- Fine tune servo positions using gamepad2
-    //--- Y: Increment position (+0.01)
-    //--- A: Decrement position (-0.01)
+    //--- Y: Increment position (+0.005)
+    //--- A: Decrement position (-0.005)
     //--- B: Next mode (Left Down -> Left Up -> Middle Down -> etc.)
     //--- X: Previous mode
+    //--- Dpad Up: Test fire current kicker (move to up position briefly)
+    //--- Dpad Down: Retract current kicker (move to down position)
     public void fineTunePositions()
     {
         String[] modeNames = {"Left DOWN", "Left UP", "Middle DOWN", "Middle UP", "Right DOWN", "Right UP"};
+
+        //--- Initialize servo position on first call
+        if (!_tuneInitialized)
+        {
+            _tuneInitialized = true;
+            applyTunePosition();
+        }
 
         //--- Y button - increment position
         if (_gamepad2.y)
@@ -501,14 +511,39 @@ public class Kickers
             _tuneXPressed = false;
         }
 
+        //--- Dpad Up - test fire current kicker (move to UP position)
+        if (_gamepad2.dpad_up)
+        {
+            int currentKicker = (_tuneMode / 2) + 1;  //--- 0,1->1, 2,3->2, 4,5->3
+            switch (currentKicker)
+            {
+                case 1: _servoKickerLeft.setPosition(_tuneLeftUp); break;
+                case 2: _servoKickerMiddle.setPosition(_tuneMiddleUp); break;
+                case 3: _servoKickerRight.setPosition(_tuneRightUp); break;
+            }
+        }
+
+        //--- Dpad Down - retract current kicker (move to DOWN position)
+        if (_gamepad2.dpad_down)
+        {
+            int currentKicker = (_tuneMode / 2) + 1;
+            switch (currentKicker)
+            {
+                case 1: _servoKickerLeft.setPosition(_tuneLeftDown); break;
+                case 2: _servoKickerMiddle.setPosition(_tuneMiddleDown); break;
+                case 3: _servoKickerRight.setPosition(_tuneRightDown); break;
+            }
+        }
+
         //--- Display telemetry
         _telemetry.addData("--- KICKER FINE TUNE ---", "");
         _telemetry.addData("Current Mode", ">>> %s <<<", modeNames[_tuneMode]);
-        _telemetry.addData("Controls", "Y=+0.01, A=-0.01, B=Next, X=Prev");
+        _telemetry.addData("Controls", "Y=+0.005, A=-0.005, B=Next, X=Prev");
+        _telemetry.addData("Test", "DpadUp=Fire, DpadDown=Retract");
         _telemetry.addData("------------------------", "");
-        _telemetry.addData("Left", "Down: %.2f | Up: %.2f", _tuneLeftDown, _tuneLeftUp);
-        _telemetry.addData("Middle", "Down: %.2f | Up: %.2f", _tuneMiddleDown, _tuneMiddleUp);
-        _telemetry.addData("Right", "Down: %.2f | Up: %.2f", _tuneRightDown, _tuneRightUp);
+        _telemetry.addData("Left", "Down: %.3f | Up: %.3f", _tuneLeftDown, _tuneLeftUp);
+        _telemetry.addData("Middle", "Down: %.3f | Up: %.3f", _tuneMiddleDown, _tuneMiddleUp);
+        _telemetry.addData("Right", "Down: %.3f | Up: %.3f", _tuneRightDown, _tuneRightUp);
         _telemetry.addData("------------------------", "");
     }
 
