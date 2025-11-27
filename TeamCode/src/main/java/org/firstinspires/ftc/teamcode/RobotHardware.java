@@ -6,6 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.hardware.Drive;
+import org.firstinspires.ftc.teamcode.hardware.Flywheel;
 import org.firstinspires.ftc.teamcode.hardware.Intake;
 import org.firstinspires.ftc.teamcode.hardware.Kickers;
 import org.firstinspires.ftc.teamcode.hardware.Lights;
@@ -109,6 +110,7 @@ public class RobotHardware {
     public Drive drive;
     public Kickers kickers;
     public Lights lights;
+    public Flywheel flywheel;
 
     //------------------------------------------------------------------------------------------
     //--- Define a constructor that allows the OpMode to pass a reference to itself
@@ -177,7 +179,7 @@ public class RobotHardware {
         servoLightMiddle = myOpMode.hardwareMap.get(Servo.class, "ltm");
         servoLightRight = myOpMode.hardwareMap.get(Servo.class, "ltr");
 
-        servoKickerLeft.setDirection(Servo.Direction.REVERSE);
+        //servoKickerLeft.setDirection(Servo.Direction.REVERSE);
 
         //------------------------------------------------------------------------------------------
         //--- Hardware Constructors
@@ -228,6 +230,17 @@ public class RobotHardware {
         );
         lights.initialize();
 
+        flywheel = new Flywheel(
+                motorFlyLeft,
+                motorFlyRight,
+                myOpMode.gamepad1,
+                myOpMode.gamepad2,
+                myOpMode.telemetry,
+                robotVersion,
+                _showInfo
+        );
+        flywheel.initialize();
+
         //------------------------------------------------------------------------------------------
         //--- Messages
         //------------------------------------------------------------------------------------------
@@ -243,5 +256,6 @@ public class RobotHardware {
     {
         lights.run();
         kickers.run();
+        flywheel.run();
     }
 }

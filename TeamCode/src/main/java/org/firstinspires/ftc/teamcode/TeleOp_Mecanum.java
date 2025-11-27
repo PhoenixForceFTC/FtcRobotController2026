@@ -122,9 +122,14 @@ public class TeleOp_Mecanum extends LinearOpMode
             _robot.kickers.controlKickers();
             
             //------------------------------------------------------------------------------------------
-            //--- Kicker Fine Tune (uncomment to tune servo positions with gamepad2)
+            //--- Kicker Fine Tune
             //------------------------------------------------------------------------------------------
-            _robot.kickers.fineTunePositions();
+            // _robot.kickers.fineTunePositions();
+
+            //------------------------------------------------------------------------------------------
+            //--- Flywheel Test
+            //------------------------------------------------------------------------------------------
+            _robot.flywheel.testVelocities();
 
             //------------------------------------------------------------------------------------------
             //--- Lights
