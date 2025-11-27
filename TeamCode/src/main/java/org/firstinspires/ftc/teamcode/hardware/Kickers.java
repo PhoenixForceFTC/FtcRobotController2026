@@ -213,11 +213,13 @@ public class Kickers
     public void controlKickers()
     {
         //--- Right trigger - fire all (detect press, not hold)
+        //--- Also cancels any sequence in progress
         if (_gamepad1.right_trigger > 0.1)
         {
             if (!_triggerWasPressed)
             {
                 _triggerWasPressed = true;
+                _sequenceFiring = false;  //--- Cancel any sequence in progress
                 fireAll();
             }
         }
@@ -227,9 +229,10 @@ public class Kickers
         }
 
         //--- Right bumper - fire in sequence (detect press, not hold)
+        //--- Only starts if no sequence is already in progress
         if (_gamepad1.right_bumper)
         {
-            if (!_bumperWasPressed)
+            if (!_bumperWasPressed && !_sequenceFiring)
             {
                 _bumperWasPressed = true;
                 fireSequence();
