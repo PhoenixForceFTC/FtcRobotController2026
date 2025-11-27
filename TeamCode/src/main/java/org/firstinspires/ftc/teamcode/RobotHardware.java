@@ -118,10 +118,10 @@ public class RobotHardware {
         myOpMode = opmode;
     }
 
-    /**
-     * Initialize all the robot's hardware.
-     * This method must be called ONCE when the OpMode is initialized.
-     */
+    //------------------------------------------------------------------------------------------
+    // Initialize all the robot's hardware.
+    // This method must be called ONCE when the OpMode is initialized.
+    //------------------------------------------------------------------------------------------
     public void init(int robotVersion)
     {
         //------------------------------------------------------------------------------------------
@@ -145,6 +145,8 @@ public class RobotHardware {
         motorFlyRight = myOpMode.hardwareMap.get(DcMotor.class, "flyr");
 
         motorIntake.setDirection(DcMotor.Direction.FORWARD);
+        motorIntake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        motorIntake.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         motorKickstand.setDirection(DcMotor.Direction.FORWARD);
         motorKickstand.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
@@ -233,12 +235,13 @@ public class RobotHardware {
         myOpMode.telemetry.update();
     }
 
-    /**
-     * Run all hardware that requires periodic updates.
-     * This method must be called in the main loop of the OpMode.
-     */
+    //------------------------------------------------------------------------------------------
+    // Run all hardware that requires periodic updates.
+    // This method must be called in the main loop of the OpMode.
+    //------------------------------------------------------------------------------------------
     public void run()
     {
         lights.run();
+        kickers.run();
     }
 }

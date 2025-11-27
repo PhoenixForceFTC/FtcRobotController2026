@@ -22,10 +22,10 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //  - Dpad Right        - Move Right (Slow)
 //  - Dpad Left         - Move Left (Slow)
 //
-//  - Right Trigger     - Fire 3
-//  - Right Bumpers     - Fire 1
+//  - Right Trigger     - Fire All Kickers
+//  - Right Bumpers     - Fire Kickers in Sequence
 //  - Left Trigger      - Intake Toggle On/Off
-//  - Left Bumpers      - Intake Outtake for seconds
+//  - Left Bumpers      - Intake Outtakes for timed duration
 //
 //  - Y (▲)             -
 //  - A (✕)             -
@@ -88,9 +88,8 @@ public class TeleOp_Mecanum extends LinearOpMode
         //------------------------------------------------------------------------------------------
         //--- Hardware Initialize
         //------------------------------------------------------------------------------------------
-//        _robot.arm.initialize();
-//        _robot.intake.initialize();
-//        _robot.lift.initialize();
+        _robot.intake.initialize();
+        _robot.lights.initialize();
 
         //------------------------------------------------------------------------------------------
         //--- Run until the end of the match (driver presses STOP)
@@ -101,12 +100,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //--- Hardware Run (updates lights, etc.)
             //------------------------------------------------------------------------------------------
             _robot.run();
-
-            //------------------------------------------------------------------------------------------
-            //--- Test Lights (uncomment to test light colors with gamepad2 dpad)
-            //------------------------------------------------------------------------------------------
-            // _robot.lights.testColors();
-            
+           
             //------------------------------------------------------------------------------------------
             //--- Start Telemetry Display
             //------------------------------------------------------------------------------------------
@@ -123,16 +117,21 @@ public class TeleOp_Mecanum extends LinearOpMode
             _robot.intake.controlIntake();
 
             //------------------------------------------------------------------------------------------
-            //--- Test Lights Pattern (comment out when done testing)
+            //--- Kickers
             //------------------------------------------------------------------------------------------
+            _robot.kickers.controlKickers();
+            
+            //------------------------------------------------------------------------------------------
+            //--- Kicker Fine Tune (uncomment to tune servo positions with gamepad2)
+            //------------------------------------------------------------------------------------------
+            _robot.kickers.fineTunePositions();
+
+            //------------------------------------------------------------------------------------------
+            //--- Lights
+            //------------------------------------------------------------------------------------------
+            // _robot.lights.testColors();
             // _robot.lights.testPattern();
-
-            //------------------------------------------------------------------------------------------
-            //--- Arm
-            //------------------------------------------------------------------------------------------
-//            _robot.arm.controlArm();
-//            _robot.arm.controlArmManual();
-
+ 
             //------------------------------------------------------------------------------------------
             //--- Update Telemetry Display
             //------------------------------------------------------------------------------------------
