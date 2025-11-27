@@ -30,7 +30,8 @@ public class Drive
     private final DcMotor _frontRight;
     private final DcMotor _rearLeft;
     private final DcMotor _rearRight;
-    private final Gamepad _gamepad;
+    private final Gamepad _gamepad1;
+    private final Gamepad _gamepad2;
     private final Telemetry _telemetry;
     private final boolean _showInfo;
 
@@ -38,39 +39,44 @@ public class Drive
     //endregion
 
     //region --- Constructor ---
-    public Drive(DcMotor frontLeft, DcMotor frontRight, DcMotor rearLeft, DcMotor rearRight,
-                 Gamepad gamepad, Telemetry telemetry, int robotVersion, boolean showInfo)
+    public Drive(
+        DcMotor frontLeft, 
+        DcMotor frontRight, 
+        DcMotor rearLeft, 
+        DcMotor rearRight,
+        Gamepad gamepad1, Gamepad gamepad2, Telemetry telemetry, int robotVersion, boolean showInfo)
     {
-        _frontLeft = frontLeft;
-        _frontRight = frontRight;
-        _rearLeft = rearLeft;
-        _rearRight = rearRight;
-        _gamepad = gamepad;
-        _telemetry = telemetry;
-        _robotVersion = robotVersion;
-        _showInfo = showInfo;
+        this._frontLeft = frontLeft;
+        this._frontRight = frontRight;
+        this._rearLeft = rearLeft;
+        this._rearRight = rearRight;
+        this._gamepad1 = gamepad1;
+        this._gamepad2 = gamepad2;
+        this._telemetry = telemetry;
+        this._robotVersion = robotVersion;
+        this._showInfo = showInfo;
     }
     //endregion
 
     //--- Arcade Drive with Speed Control
     public void arcadeDriveSpeedControl()
     {
-        if (_gamepad.left_stick_button && !_wasLeftStickButtonPressed)
+        if (_gamepad1.left_stick_button && !_wasLeftStickButtonPressed)
         {
             _isSpeedFast = !_isSpeedFast; //--- Toggle movement speed
         }
-        _wasLeftStickButtonPressed = _gamepad.left_stick_button;
+        _wasLeftStickButtonPressed = _gamepad1.left_stick_button;
 
-        if (_gamepad.right_stick_button && !_wasRightStickButtonPressed)
+        if (_gamepad1.right_stick_button && !_wasRightStickButtonPressed)
         {
             _isRotateFast = !_isRotateFast; //--- Toggle rotation speed
         }
-        _wasRightStickButtonPressed = _gamepad.right_stick_button;
+        _wasRightStickButtonPressed = _gamepad1.right_stick_button;
 
         double speedMultiplier = _isSpeedFast ? SPEED_FAST : SPEED_SLOW;
         double speedMultiplierRotate = _isRotateFast ? SPEED_ROTATE_FAST : SPEED_ROTATE_SLOW;
 
-        DriveUtils.arcadeDrive(_frontLeft, _frontRight, _rearLeft, _rearRight, _gamepad, _telemetry, _showInfo, speedMultiplier, speedMultiplierRotate);
+        DriveUtils.arcadeDrive(_frontLeft, _frontRight, _rearLeft, _rearRight, _gamepad1, _telemetry, _showInfo, speedMultiplier, speedMultiplierRotate);
 
         if (_showInfo)
         {
@@ -82,22 +88,22 @@ public class Drive
     //--- Directional Driving with D-Pad
     public void directionDrive(double speed)
     {
-        if (_gamepad.dpad_up)
+        if (_gamepad1.dpad_up)
         {
             moveForward(speed);
             if (_showInfo) _telemetry.addData("Drive -> Direction", "FORWARD (%4.2f)", speed);
         }
-        else if (_gamepad.dpad_down)
+        else if (_gamepad1.dpad_down)
         {
             moveBackward(speed);
             if (_showInfo) _telemetry.addData("Drive -> Direction", "BACKWARD (%4.2f)", speed);
         }
-        else if (_gamepad.dpad_left)
+        else if (_gamepad1.dpad_left)
         {
             moveLeft(speed);
             if (_showInfo) _telemetry.addData("Drive -> Direction", "LEFT (%4.2f)", speed);
         }
-        else if (_gamepad.dpad_right)
+        else if (_gamepad1.dpad_right)
         {
             moveRight(speed);
             if (_showInfo) _telemetry.addData("Drive -> Direction", "RIGHT (%4.2f)", speed);
@@ -114,7 +120,7 @@ public class Drive
     public void driveControl(double speed)
     {
         //--- If any D-Pad button is pressed, use directional drive; otherwise, use arcade drive
-        if (_gamepad.dpad_up || _gamepad.dpad_down || _gamepad.dpad_left || _gamepad.dpad_right)
+        if (_gamepad1.dpad_up || _gamepad1.dpad_down || _gamepad1.dpad_left || _gamepad1.dpad_right)
         {
             directionDrive(speed);
         }

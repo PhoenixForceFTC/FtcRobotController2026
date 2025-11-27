@@ -196,6 +196,7 @@ public class RobotHardware {
                 motorDriveRearLeft,
                 motorDriveRearRight,
                 myOpMode.gamepad1,
+                myOpMode.gamepad2,
                 myOpMode.telemetry,
                 robotVersion,
                 _showInfo

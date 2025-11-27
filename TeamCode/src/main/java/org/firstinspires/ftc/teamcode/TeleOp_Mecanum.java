@@ -24,8 +24,8 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //
 //  - Right Trigger     - Fire 3
 //  - Right Bumpers     - Fire 1
-//  - Left Trigger      - Intake In
-//  - Left Bumpers      - Intake Out
+//  - Left Trigger      - Intake Toggle On/Off
+//  - Left Bumpers      - Intake Outtake for seconds
 //
 //  - Y (▲)             -
 //  - A (✕)             -
@@ -120,13 +120,12 @@ public class TeleOp_Mecanum extends LinearOpMode
             //------------------------------------------------------------------------------------------
             //--- Intake
             //------------------------------------------------------------------------------------------
-//            _robot.intake.intakeByEncoder();
-//            _robot.intake.intakeByPower();
-//            _robot.intake.setLiftArmControls();
-//            _robot.intake.controlIntake();
-//            _robot.intake.setClawControls();
+            _robot.intake.controlIntake();
 
-            _robot.lights.testPattern();
+            //------------------------------------------------------------------------------------------
+            //--- Test Lights Pattern (comment out when done testing)
+            //------------------------------------------------------------------------------------------
+            // _robot.lights.testPattern();
 
             //------------------------------------------------------------------------------------------
             //--- Arm
