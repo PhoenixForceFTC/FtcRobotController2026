@@ -206,18 +206,6 @@ public class RobotHardware {
                 _showInfo
         );
 
-        kickers = new Kickers(
-                servoKickerLeft,
-                servoKickerMiddle,
-                servoKickerRight,
-                myOpMode.gamepad1,
-                myOpMode.gamepad2,
-                myOpMode.telemetry,
-                robotVersion,
-                _showInfo
-        );
-        kickers.initialize();
-
         lights = new Lights(
                 servoLightLeft,
                 servoLightMiddle,
@@ -240,6 +228,19 @@ public class RobotHardware {
                 _showInfo
         );
         flywheel.initialize();
+
+        kickers = new Kickers(
+                servoKickerLeft,
+                servoKickerMiddle,
+                servoKickerRight,
+                flywheel,
+                myOpMode.gamepad1,
+                myOpMode.gamepad2,
+                myOpMode.telemetry,
+                robotVersion,
+                _showInfo
+        );
+        kickers.initialize();
 
         //------------------------------------------------------------------------------------------
         //--- Messages

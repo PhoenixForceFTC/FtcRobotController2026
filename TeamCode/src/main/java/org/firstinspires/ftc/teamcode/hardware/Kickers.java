@@ -23,6 +23,12 @@ public class Kickers
     //--- Timing Settings (in seconds)
     private static final double KICK_HOLD_TIME = 0.3;      //--- How long to hold the kick position
     private static final double SEQUENCE_DELAY = 0.5;      //--- Delay between kicks in sequence
+
+    //--- Velocity Presets (RPM) for gamepad1 controls
+    private static final double VELOCITY_PRESET_Y = 4000.0;
+    private static final double VELOCITY_PRESET_B = 3000.0;
+    private static final double VELOCITY_PRESET_X = 2000.0;
+    private static final double VELOCITY_PRESET_A = 1500.0;
     //endregion
 
     //region --- Enums ---
@@ -51,6 +57,9 @@ public class Kickers
     private final Telemetry _telemetry;
     private final boolean _showInfo;
     private int _robotVersion;
+
+    //--- Flywheel reference for velocity-based firing
+    private Flywheel _flywheel = null;
     //endregion
 
     //region --- State ---
@@ -77,9 +86,20 @@ public class Kickers
     private ElapsedTime _timerSequence = new ElapsedTime();
     private boolean _waitingForKickComplete = false;
 
+    //--- Velocity-based firing state
+    private boolean _velocityFirePending = false;
+    private boolean _velocityFireAll = false;           //--- true = fire all, false = fire sequence
+    private double _targetVelocity = 0.0;
+    private boolean _waitingForVelocity = false;        //--- Waiting for velocity before firing
+    private boolean _sequenceWaitingForVelocity = false; //--- Waiting for velocity recovery during sequence
+
     //--- Input debouncing
     private boolean _triggerWasPressed = false;
     private boolean _bumperWasPressed = false;
+    private boolean _yPressed = false;
+    private boolean _bPressed = false;
+    private boolean _xPressed = false;
+    private boolean _aPressed = false;
 
     //--- Fine tune test mode state
     private int _tuneMode = 0;  //--- 0=LeftDown, 1=LeftUp, 2=MiddleDown, 3=MiddleUp, 4=RightDown, 5=RightUp
@@ -101,12 +121,14 @@ public class Kickers
             Servo servoKickerLeft,
             Servo servoKickerMiddle,
             Servo servoKickerRight,
+            Flywheel flywheel,
             Gamepad gamepad1, Gamepad gamepad2, Telemetry telemetry, int robotVersion, boolean showInfo
     )
     {
         this._servoKickerLeft = servoKickerLeft;
         this._servoKickerMiddle = servoKickerMiddle;
         this._servoKickerRight = servoKickerRight;
+        this._flywheel = flywheel;
         this._gamepad1 = gamepad1;
         this._gamepad2 = gamepad2;
         this._telemetry = telemetry;
@@ -145,6 +167,24 @@ public class Kickers
             _kicker3Firing = false;
         }
 
+        //--- Handle velocity-based firing (waiting for velocity before firing)
+        if (_velocityFirePending && _waitingForVelocity)
+        {
+            if (_flywheel != null && _flywheel.isAtTarget())
+            {
+                _waitingForVelocity = false;
+                if (_velocityFireAll)
+                {
+                    fireAll();
+                }
+                else
+                {
+                    fireSequence();
+                }
+                _velocityFirePending = false;
+            }
+        }
+
         //--- Handle sequence firing
         if (_sequenceFiring)
         {
@@ -160,6 +200,21 @@ public class Kickers
             //--- Sequence complete
             _sequenceFiring = false;
             _sequenceStep = 0;
+            _sequenceWaitingForVelocity = false;
+            return;
+        }
+
+        //--- If we're waiting for velocity recovery between shots
+        if (_sequenceWaitingForVelocity)
+        {
+            if (_flywheel != null && _flywheel.isAtTarget())
+            {
+                _sequenceWaitingForVelocity = false;
+                //--- Velocity recovered, fire next kicker
+                int kickerToFire = _firingOrder[_sequenceStep];
+                fireKicker(kickerToFire);
+                _waitingForKickComplete = true;
+            }
             return;
         }
 
@@ -174,6 +229,12 @@ public class Kickers
                 _waitingForKickComplete = false;
                 _timerSequence.reset();
                 _sequenceStep++;
+
+                //--- If using velocity-based sequence, wait for velocity recovery
+                if (_sequenceStep < 3 && _flywheel != null && _targetVelocity > 0)
+                {
+                    _sequenceWaitingForVelocity = true;
+                }
             }
         }
         else
@@ -208,10 +269,14 @@ public class Kickers
     //region --- Control Methods ---
 
     //--- Call this in your main loop to handle gamepad controls
-    //--- Right Trigger: Fire all kickers at once
-    //--- Right Bumper: Fire in sequence based on ball colors
+    //--- Gamepad1 Y/B/X/A: Set velocity presets (4000/3000/2000/1500 RPM)
+    //--- Right Trigger: Fire all kickers at once (waits for velocity if set)
+    //--- Right Bumper: Fire in sequence based on ball colors (waits for velocity between shots)
     public void controlKickers()
     {
+        //--- Velocity preset buttons (gamepad1)
+        handleVelocityPresets();
+
         //--- Right trigger - fire all (detect press, not hold)
         //--- Also cancels any sequence in progress
         if (_gamepad1.right_trigger > 0.1)
@@ -220,7 +285,27 @@ public class Kickers
             {
                 _triggerWasPressed = true;
                 _sequenceFiring = false;  //--- Cancel any sequence in progress
-                fireAll();
+                _velocityFirePending = false;  //--- Cancel any pending velocity fire
+
+                //--- If velocity is set and flywheel exists, wait for velocity
+                if (_flywheel != null && _targetVelocity > 0)
+                {
+                    _flywheel.setVelocity(_targetVelocity);
+                    if (_flywheel.isAtTarget())
+                    {
+                        fireAll();
+                    }
+                    else
+                    {
+                        _velocityFirePending = true;
+                        _velocityFireAll = true;
+                        _waitingForVelocity = true;
+                    }
+                }
+                else
+                {
+                    fireAll();
+                }
             }
         }
         else
@@ -232,15 +317,94 @@ public class Kickers
         //--- Only starts if no sequence is already in progress
         if (_gamepad1.right_bumper)
         {
-            if (!_bumperWasPressed && !_sequenceFiring)
+            if (!_bumperWasPressed && !_sequenceFiring && !_velocityFirePending)
             {
                 _bumperWasPressed = true;
-                fireSequence();
+
+                //--- If velocity is set and flywheel exists, wait for velocity
+                if (_flywheel != null && _targetVelocity > 0)
+                {
+                    _flywheel.setVelocity(_targetVelocity);
+                    if (_flywheel.isAtTarget())
+                    {
+                        fireSequence();
+                    }
+                    else
+                    {
+                        _velocityFirePending = true;
+                        _velocityFireAll = false;
+                        _waitingForVelocity = true;
+                    }
+                }
+                else
+                {
+                    fireSequence();
+                }
             }
         }
         else
         {
             _bumperWasPressed = false;
+        }
+    }
+
+    //--- Handle velocity preset buttons on gamepad1
+    private void handleVelocityPresets()
+    {
+        //--- Y button - 4000 RPM
+        if (_gamepad1.y)
+        {
+            if (!_yPressed)
+            {
+                _yPressed = true;
+                _targetVelocity = VELOCITY_PRESET_Y;
+            }
+        }
+        else
+        {
+            _yPressed = false;
+        }
+
+        //--- B button - 3000 RPM
+        if (_gamepad1.b)
+        {
+            if (!_bPressed)
+            {
+                _bPressed = true;
+                _targetVelocity = VELOCITY_PRESET_B;
+            }
+        }
+        else
+        {
+            _bPressed = false;
+        }
+
+        //--- X button - 2000 RPM
+        if (_gamepad1.x)
+        {
+            if (!_xPressed)
+            {
+                _xPressed = true;
+                _targetVelocity = VELOCITY_PRESET_X;
+            }
+        }
+        else
+        {
+            _xPressed = false;
+        }
+
+        //--- A button - 1500 RPM
+        if (_gamepad1.a)
+        {
+            if (!_aPressed)
+            {
+                _aPressed = true;
+                _targetVelocity = VELOCITY_PRESET_A;
+            }
+        }
+        else
+        {
+            _aPressed = false;
         }
     }
 
@@ -431,6 +595,15 @@ public class Kickers
                     _servoKickerRight.getPosition(), _ballColor3);
             _telemetry.addData("Sequence", _sequence);
             _telemetry.addData("Sequence Firing", _sequenceFiring);
+            _telemetry.addData("Target Velocity", "%.0f RPM", _targetVelocity);
+            if (_waitingForVelocity)
+            {
+                _telemetry.addData("Status", "Waiting for velocity...");
+            }
+            else if (_sequenceWaitingForVelocity)
+            {
+                _telemetry.addData("Status", "Waiting for velocity recovery...");
+            }
         }
     }
 
