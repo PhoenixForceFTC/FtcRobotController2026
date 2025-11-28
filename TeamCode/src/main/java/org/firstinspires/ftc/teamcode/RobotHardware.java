@@ -1,10 +1,12 @@
 package org.firstinspires.ftc.teamcode;
 
 //region --- Imports ---
+import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.teamcode.hardware.Camera;
 import org.firstinspires.ftc.teamcode.hardware.Drive;
 import org.firstinspires.ftc.teamcode.hardware.Flywheel;
 import org.firstinspires.ftc.teamcode.hardware.Intake;
@@ -104,6 +106,11 @@ public class RobotHardware {
     public Servo servoLightRight = null;
 
     //------------------------------------------------------------------------------------------
+    //--- Sensors
+    //------------------------------------------------------------------------------------------
+    public HuskyLens huskyLens = null;
+
+    //------------------------------------------------------------------------------------------
     //--- Custom Hardware Classes
     //------------------------------------------------------------------------------------------
     public Intake intake;
@@ -111,6 +118,7 @@ public class RobotHardware {
     public Kickers kickers;
     public Lights lights;
     public Flywheel flywheel;
+    public Camera camera;
 
     //------------------------------------------------------------------------------------------
     //--- Define a constructor that allows the OpMode to pass a reference to itself
@@ -179,6 +187,9 @@ public class RobotHardware {
         servoLightMiddle = myOpMode.hardwareMap.get(Servo.class, "ltm");
         servoLightRight = myOpMode.hardwareMap.get(Servo.class, "ltr");
 
+        //--- HuskyLens
+        huskyLens = myOpMode.hardwareMap.get(HuskyLens.class, "cam");
+
         //servoKickerLeft.setDirection(Servo.Direction.REVERSE);
 
         //------------------------------------------------------------------------------------------
@@ -242,6 +253,20 @@ public class RobotHardware {
         );
         kickers.initialize();
 
+        camera = new Camera(
+                huskyLens,
+                servoCameraYaw,
+                servoCameraPitch,
+                kickers,
+                lights,
+                myOpMode.gamepad1,
+                myOpMode.gamepad2,
+                myOpMode.telemetry,
+                robotVersion,
+                _showInfo
+        );
+        camera.initialize();
+
         //------------------------------------------------------------------------------------------
         //--- Messages
         //------------------------------------------------------------------------------------------
@@ -258,5 +283,6 @@ public class RobotHardware {
         lights.run();
         kickers.run();
         flywheel.run();
+        camera.run();
     }
 }

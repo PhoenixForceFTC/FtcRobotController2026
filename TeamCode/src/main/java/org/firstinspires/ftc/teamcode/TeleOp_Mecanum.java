@@ -22,15 +22,15 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //  - Dpad Right        - Move Right (Slow)
 //  - Dpad Left         - Move Left (Slow)
 //
-//  - Right Trigger     - Fire All Kickers
-//  - Right Bumpers     - Fire Kickers in Sequence
+//  - Right Trigger     - Fire All Kickers (waits for flywheel velocity)
+//  - Right Bumpers     - Fire Kickers in Sequence (waits for velocity between shots)
 //  - Left Trigger      - Intake Toggle On/Off
 //  - Left Bumpers      - Intake Outtakes for timed duration
 //
-//  - Y (▲)             -
-//  - A (✕)             -
-//  - X (■)             -
-//  - B (○)             - Auto Shoot Long
+//  - Y (▲)             - Set Flywheel Velocity 4000 RPM
+//  - A (✕)             - Set Flywheel Velocity 1500 RPM
+//  - X (■)             - Set Flywheel Velocity 2000 RPM
+//  - B (○)             - Set Flywheel Velocity 3000 RPM
 //
 //----------------------------------------------------------------------
 // Joystick 2 -----------------------------------------------------------
@@ -39,20 +39,20 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //  - Left Stick Click  - ??Reset Intake Encoder
 //  - Right Stick Click - ??Reset Lift Encoder
 //
-//  - Dpad Up           - ??Manual Lift Up
-//  - Dpad Down         - ??Manual Lift Down
-//  - Dpad Right        - ??Manual Intake In
-//  - Dpad Left         - ??Manual Intake Out
+//  - Dpad Up           - Camera Pitch Up / Flywheel +100 RPM
+//  - Dpad Down         - Camera Pitch Down / Flywheel -100 RPM
+//  - Dpad Right        - Camera Yaw Right
+//  - Dpad Left         - Camera Yaw Left
 //
 //  - Right Trigger     -
 //  - Right Bumpers     -
 //  - Left Trigger      -
 //  - Left Bumpers      -
 
-//  - Y (▲)             - ??Mode -> High Basket
-//  - A (✕)             - ??Mode -> Low Basket
-//  - X (■)             - ??Mode -> Climbing
-//  - B (○)             - ??Mode -> Specimens
+//  - Y (▲)             - Camera Pitch Up / Flywheel 4000 RPM
+//  - A (✕)             - Camera Pitch Down / Flywheel Stop
+//  - X (■)             - Camera Yaw Left / Flywheel 2000 RPM
+//  - B (○)             - Camera Yaw Right / Flywheel 3000 RPM
 //----------------------------------------------------------------------
 //endregion
 
@@ -120,16 +120,17 @@ public class TeleOp_Mecanum extends LinearOpMode
             //--- Kickers
             //------------------------------------------------------------------------------------------
             _robot.kickers.controlKickers();
-            
-            //------------------------------------------------------------------------------------------
-            //--- Kicker Fine Tune
-            //------------------------------------------------------------------------------------------
-            // _robot.kickers.fineTunePositions();
+            //_robot.kickers.fineTunePositions();
 
             //------------------------------------------------------------------------------------------
-            //--- Flywheel Test
+            //--- Flywheel
             //------------------------------------------------------------------------------------------
-            _robot.flywheel.testVelocities();
+            //_robot.flywheel.testVelocities();
+
+            //------------------------------------------------------------------------------------------
+            //--- Camera
+            //------------------------------------------------------------------------------------------
+            _robot.camera.fineTuneCameraPos();
 
             //------------------------------------------------------------------------------------------
             //--- Lights
