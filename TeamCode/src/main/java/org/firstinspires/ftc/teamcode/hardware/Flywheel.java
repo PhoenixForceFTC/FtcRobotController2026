@@ -35,7 +35,7 @@ public class Flywheel
     private final Gamepad _gamepad2;
     private final Telemetry _telemetry;
     private final boolean _showInfo;
-    private int _robotVersion;
+    private final int _robotVersion;
     //endregion
 
     //region --- State ---

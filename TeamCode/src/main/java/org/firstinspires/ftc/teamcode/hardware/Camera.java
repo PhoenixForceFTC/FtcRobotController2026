@@ -45,7 +45,7 @@ public class Camera
     private final Gamepad _gamepad2;
     private final Telemetry _telemetry;
     private final boolean _showInfo;
-    private int _robotVersion;
+    private final int _robotVersion;
     //endregion
 
     //region --- State ---
@@ -70,7 +70,6 @@ public class Camera
     private boolean _aButtonPressed = false;        // Debounce A button
     private ElapsedTime _alignSettleTimer = new ElapsedTime();  // Timer for settling
     private boolean _isSettling = false;            // Currently in settling period
-    private int _lastErrorDirection = 0;            // Track direction to detect oscillation
     //endregion
 
     //region --- Constructor ---
@@ -361,7 +360,6 @@ public class Camera
             {
                 _isSettling = true;
                 _alignSettleTimer.reset();
-                _drive.stopMotors();  // Stop and let brake mode hold
             }
             
             //--- Check if we've been settled long enough
@@ -373,45 +371,40 @@ public class Camera
             //--- Keep motors stopped while settling
             _drive.stopMotors();
         }
-        //--- In the slow zone - slow approach, very gentle corrections
-        else if (absError <= ALIGN_SLOWZONE)
+        else
         {
+            //--- Outside deadband - need to rotate
             _isAligned = false;
             _isSettling = false;
-            
-            //--- Use minimum speed for fine adjustments
-            double speed = ALIGN_SPEED_MIN;
 
-            //--- Rotate in the correct direction
-            if (errorX > 0)
+            //--- Calculate speed: minimum in slow zone, proportional outside
+            double speed;
+            if (absError <= ALIGN_SLOWZONE)
             {
-                _drive.rotateRight(speed);
+                speed = ALIGN_SPEED_MIN;
             }
             else
             {
-                _drive.rotateLeft(speed);
+                double proportion = (double) absError / 160.0;
+                speed = ALIGN_SPEED_MIN + (proportion * (ALIGN_SPEED_MAX - ALIGN_SPEED_MIN));
+                speed = Math.min(speed, ALIGN_SPEED_MAX);
             }
+
+            //--- Rotate toward center
+            rotateToward(errorX, speed);
+        }
+    }
+
+    //--- Helper: Rotate in the direction to reduce error
+    private void rotateToward(int errorX, double speed)
+    {
+        if (errorX > 0)
+        {
+            _drive.rotateRight(speed);
         }
         else
         {
-            _isAligned = false;
-            _isSettling = false;
-
-            //--- Calculate proportional speed based on error
-            //--- Faster when far, slower when close
-            double proportion = (double)absError / 160.0;
-            double speed = ALIGN_SPEED_MIN + (proportion * (ALIGN_SPEED_MAX - ALIGN_SPEED_MIN));
-            speed = Math.min(speed, ALIGN_SPEED_MAX);
-
-            //--- Rotate in the correct direction
-            if (errorX > 0)
-            {
-                _drive.rotateRight(speed);
-            }
-            else
-            {
-                _drive.rotateLeft(speed);
-            }
+            _drive.rotateLeft(speed);
         }
     }
 

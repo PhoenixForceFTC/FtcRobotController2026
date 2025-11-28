@@ -34,8 +34,7 @@ public class Drive
     private final Gamepad _gamepad2;
     private final Telemetry _telemetry;
     private final boolean _showInfo;
-
-    private int _robotVersion;
+    private final int _robotVersion;
     //endregion
 
     //region --- Constructor ---
@@ -168,7 +167,7 @@ public class Drive
         MotorUtils.setPower(_rearRight, speed);
     }
 
-    //--- Public strafe methods for external use (e.g., camera centering)
+    //--- Public strafe methods for external use (e.g., future autonomous)
     public void strafeLeft(double speed)
     {
         moveLeft(speed);
@@ -179,7 +178,11 @@ public class Drive
         moveRight(speed);
     }
 
-    //--- Public rotate methods for external use (e.g., AprilTag alignment)
+    //endregion
+
+    //region --- Alignment Support Methods ---
+
+    //--- Rotate left for AprilTag alignment
     public void rotateLeft(double speed)
     {
         MotorUtils.setPower(_frontLeft, -speed);
@@ -188,6 +191,7 @@ public class Drive
         MotorUtils.setPower(_rearRight, speed);
     }
 
+    //--- Rotate right for AprilTag alignment
     public void rotateRight(double speed)
     {
         MotorUtils.setPower(_frontLeft, speed);
@@ -197,6 +201,7 @@ public class Drive
     }
 
     //--- Set brake mode for all drive motors (true = brake, false = float)
+    //--- Brake mode helps robot resist being pushed when aligned
     public void setBrakeMode(boolean brake)
     {
         DcMotor.ZeroPowerBehavior behavior = brake ? 

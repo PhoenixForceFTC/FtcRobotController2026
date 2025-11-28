@@ -63,12 +63,12 @@ I2C
 */
 //endregion
 
-public class RobotHardware {
-
+public class RobotHardware
+{
     //------------------------------------------------------------------------------------------
     //--- Settings
     //------------------------------------------------------------------------------------------
-    boolean _showInfo = true;
+    private static final boolean SHOW_INFO = true;
 
     //------------------------------------------------------------------------------------------
     //--- OpMode
@@ -201,7 +201,7 @@ public class RobotHardware {
                 myOpMode.gamepad2,
                 myOpMode.telemetry,
                 robotVersion,
-                _showInfo
+                SHOW_INFO
         );
         intake.initialize();
 
@@ -214,7 +214,7 @@ public class RobotHardware {
                 myOpMode.gamepad2,
                 myOpMode.telemetry,
                 robotVersion,
-                _showInfo
+                SHOW_INFO
         );
 
         lights = new Lights(
@@ -225,7 +225,7 @@ public class RobotHardware {
                 myOpMode.gamepad2,
                 myOpMode.telemetry,
                 robotVersion,
-                _showInfo
+                SHOW_INFO
         );
         lights.initialize();
 
@@ -236,7 +236,7 @@ public class RobotHardware {
                 myOpMode.gamepad2,
                 myOpMode.telemetry,
                 robotVersion,
-                _showInfo
+                SHOW_INFO
         );
         flywheel.initialize();
 
@@ -249,7 +249,7 @@ public class RobotHardware {
                 myOpMode.gamepad2,
                 myOpMode.telemetry,
                 robotVersion,
-                _showInfo
+                SHOW_INFO
         );
         kickers.initialize();
 
@@ -264,7 +264,7 @@ public class RobotHardware {
                 myOpMode.gamepad2,
                 myOpMode.telemetry,
                 robotVersion,
-                _showInfo
+                SHOW_INFO
         );
         camera.initialize();
 

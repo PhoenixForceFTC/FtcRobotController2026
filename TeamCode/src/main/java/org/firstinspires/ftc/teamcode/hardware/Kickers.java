@@ -56,7 +56,7 @@ public class Kickers
     private final Gamepad _gamepad2;
     private final Telemetry _telemetry;
     private final boolean _showInfo;
-    private int _robotVersion;
+    private final int _robotVersion;
 
     //--- Flywheel reference for velocity-based firing
     private Flywheel _flywheel = null;
