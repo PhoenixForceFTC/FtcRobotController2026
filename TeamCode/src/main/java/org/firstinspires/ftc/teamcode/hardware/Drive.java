@@ -168,8 +168,36 @@ public class Drive
         MotorUtils.setPower(_rearRight, speed);
     }
 
+    //--- Public strafe methods for external use (e.g., camera centering)
+    public void strafeLeft(double speed)
+    {
+        moveLeft(speed);
+    }
+
+    public void strafeRight(double speed)
+    {
+        moveRight(speed);
+    }
+
+    //--- Public rotate methods for external use (e.g., AprilTag alignment)
+    public void rotateLeft(double speed)
+    {
+        MotorUtils.setPower(_frontLeft, -speed);
+        MotorUtils.setPower(_frontRight, speed);
+        MotorUtils.setPower(_rearLeft, -speed);
+        MotorUtils.setPower(_rearRight, speed);
+    }
+
+    public void rotateRight(double speed)
+    {
+        MotorUtils.setPower(_frontLeft, speed);
+        MotorUtils.setPower(_frontRight, -speed);
+        MotorUtils.setPower(_rearLeft, speed);
+        MotorUtils.setPower(_rearRight, -speed);
+    }
+
     //--- Stops all drive motors
-    private void stopMotors()
+    public void stopMotors()
     {
         MotorUtils.setPower(_frontLeft, 0);
         MotorUtils.setPower(_frontRight, 0);

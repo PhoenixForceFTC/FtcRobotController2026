@@ -259,6 +259,7 @@ public class RobotHardware {
                 servoCameraPitch,
                 kickers,
                 lights,
+                drive,
                 myOpMode.gamepad1,
                 myOpMode.gamepad2,
                 myOpMode.telemetry,

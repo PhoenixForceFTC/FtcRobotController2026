@@ -24,6 +24,12 @@ public class Camera
     private static final int TAG_SEQUENCE_PGP = 5;
     private static final int TAG_SEQUENCE_PPG = 4;
     private static final int TAG_RED_TARGET = 2;
+
+    //--- HuskyLens screen dimensions (for centering)
+    private static final int SCREEN_CENTER_X = 160;  // 320 / 2
+    private static final int CENTER_DEADBAND = 15;   // Pixels from center to consider "centered"
+    private static final double CENTER_SPEED_MIN = 0.15;
+    private static final double CENTER_SPEED_MAX = 0.4;
     //endregion
 
     //region --- Hardware ---
@@ -32,6 +38,7 @@ public class Camera
     private final Servo _servoPitch;
     private final Kickers _kickers;
     private final Lights _lights;
+    private final Drive _drive;
     private final Gamepad _gamepad1;
     private final Gamepad _gamepad2;
     private final Telemetry _telemetry;
@@ -48,14 +55,13 @@ public class Camera
     //--- Fine tune state
     private double _tuneYaw = YAW_CENTER;
     private double _tunePitch = PITCH_CENTER;
-    private boolean _tuneYPressed = false;
-    private boolean _tuneAPressed = false;
-    private boolean _tuneBPressed = false;
-    private boolean _tuneXPressed = false;
     private boolean _tuneInitialized = false;
 
     //--- Tag detection state (to prevent repeated triggers)
     private int _lastProcessedTag = -1;
+
+    //--- Centering state
+    private boolean _isCentering = false;
     //endregion
 
     //region --- Constructor ---
@@ -65,6 +71,7 @@ public class Camera
             Servo servoPitch,
             Kickers kickers,
             Lights lights,
+            Drive drive,
             Gamepad gamepad1,
             Gamepad gamepad2,
             Telemetry telemetry,
@@ -77,6 +84,7 @@ public class Camera
         this._servoPitch = servoPitch;
         this._kickers = kickers;
         this._lights = lights;
+        this._drive = drive;
         this._gamepad1 = gamepad1;
         this._gamepad2 = gamepad2;
         this._telemetry = telemetry;
@@ -265,6 +273,69 @@ public class Camera
 
     //endregion
 
+    //region --- Public Methods - Robot Centering ---
+
+    //--- Rotate robot to align with AprilTag when Y button is pressed on gamepad2
+    //--- Call this from fineTuneCameraPos() or separately in your main loop
+    public void centerOnAprilTag()
+    {
+        if (_drive == null)
+        {
+            return; // Drive not set, can't center
+        }
+
+        //--- Check if Y button is pressed
+        if (_gamepad2.y && _blocks.length > 0)
+        {
+            _isCentering = true;
+
+            //--- Get the X position of the first detected block
+            int blockX = _blocks[0].x;
+            int errorX = blockX - SCREEN_CENTER_X;
+
+            //--- Check if we're within the deadband (centered enough)
+            if (Math.abs(errorX) <= CENTER_DEADBAND)
+            {
+                //--- Centered, stop motors
+                _drive.stopMotors();
+            }
+            else
+            {
+                //--- Calculate proportional speed based on error
+                //--- Max error is ~160 pixels (half screen width)
+                double proportion = Math.abs(errorX) / 160.0;
+                double speed = CENTER_SPEED_MIN + (proportion * (CENTER_SPEED_MAX - CENTER_SPEED_MIN));
+                speed = Math.min(speed, CENTER_SPEED_MAX);
+
+                //--- Rotate in the correct direction
+                if (errorX > 0)
+                {
+                    //--- Block is to the right of center, rotate right
+                    _drive.rotateRight(speed);
+                }
+                else
+                {
+                    //--- Block is to the left of center, rotate left
+                    _drive.rotateLeft(speed);
+                }
+            }
+        }
+        else if (_isCentering)
+        {
+            //--- Just released dpad_up, stop motors
+            _isCentering = false;
+            _drive.stopMotors();
+        }
+    }
+
+    //--- Check if currently centering
+    public boolean isCentering()
+    {
+        return _isCentering;
+    }
+
+    //endregion
+
     //region --- Public Methods - Algorithm/Mode Selection ---
 
     //--- Set the HuskyLens algorithm mode
@@ -316,12 +387,10 @@ public class Camera
     //region --- Fine Tune Mode ---
 
     //--- Fine tune camera position using gamepad2
-    //--- Y: Pitch Up (+0.01)
-    //--- A: Pitch Down (-0.01)
-    //--- B: Yaw Right (+0.01)
-    //--- X: Yaw Left (-0.01)
-    //--- Dpad Left/Right: Move yaw
-    //--- Dpad Up/Down: Move pitch
+    //--- Dpad Up/Down: Pitch
+    //--- Dpad Left/Right: Yaw
+    //--- Y: Center robot on AprilTag
+    //--- A/B/X: (available for other uses)
     public void fineTuneCameraPos()
     {
         //--- Initialize positions on first call
@@ -332,93 +401,42 @@ public class Camera
             _tunePitch = _servoPitch.getPosition();
         }
 
-        //--- Y button - pitch up
-        if (_gamepad2.y)
-        {
-            if (!_tuneYPressed)
-            {
-                _tuneYPressed = true;
-                _tunePitch = clamp(_tunePitch + TUNE_INCREMENT);
-                _servoPitch.setPosition(_tunePitch);
-            }
-        }
-        else
-        {
-            _tuneYPressed = false;
-        }
+        //--- Y button - center robot on AprilTag
+        centerOnAprilTag();
 
-        //--- A button - pitch down
-        if (_gamepad2.a)
-        {
-            if (!_tuneAPressed)
-            {
-                _tuneAPressed = true;
-                _tunePitch = clamp(_tunePitch - TUNE_INCREMENT);
-                _servoPitch.setPosition(_tunePitch);
-            }
-        }
-        else
-        {
-            _tuneAPressed = false;
-        }
-
-        //--- B button - yaw right
-        if (_gamepad2.b)
-        {
-            if (!_tuneBPressed)
-            {
-                _tuneBPressed = true;
-                _tuneYaw = clamp(_tuneYaw + TUNE_INCREMENT);
-                _servoYaw.setPosition(_tuneYaw);
-            }
-        }
-        else
-        {
-            _tuneBPressed = false;
-        }
-
-        //--- X button - yaw left
-        if (_gamepad2.x)
-        {
-            if (!_tuneXPressed)
-            {
-                _tuneXPressed = true;
-                _tuneYaw = clamp(_tuneYaw - TUNE_INCREMENT);
-                _servoYaw.setPosition(_tuneYaw);
-            }
-        }
-        else
-        {
-            _tuneXPressed = false;
-        }
-
-        //--- Dpad for direct axis control
-        if (_gamepad2.dpad_left)
-        {
-            _tuneYaw = clamp(_tuneYaw - TUNE_INCREMENT);
-            _servoYaw.setPosition(_tuneYaw);
-        }
-        if (_gamepad2.dpad_right)
-        {
-            _tuneYaw = clamp(_tuneYaw + TUNE_INCREMENT);
-            _servoYaw.setPosition(_tuneYaw);
-        }
+        //--- Dpad Up - pitch up
         if (_gamepad2.dpad_up)
         {
             _tunePitch = clamp(_tunePitch + TUNE_INCREMENT);
             _servoPitch.setPosition(_tunePitch);
         }
+
+        //--- Dpad Down - pitch down
         if (_gamepad2.dpad_down)
         {
             _tunePitch = clamp(_tunePitch - TUNE_INCREMENT);
             _servoPitch.setPosition(_tunePitch);
         }
 
+        //--- Dpad Left - yaw left
+        if (_gamepad2.dpad_left)
+        {
+            _tuneYaw = clamp(_tuneYaw - TUNE_INCREMENT);
+            _servoYaw.setPosition(_tuneYaw);
+        }
+
+        //--- Dpad Right - yaw right
+        if (_gamepad2.dpad_right)
+        {
+            _tuneYaw = clamp(_tuneYaw + TUNE_INCREMENT);
+            _servoYaw.setPosition(_tuneYaw);
+        }
+
         //--- Display telemetry
         _telemetry.addData("--- CAMERA FINE TUNE ---", "");
-        _telemetry.addData("Pitch", "Y=Up, A=Down");
-        _telemetry.addData("Yaw", "B=Right, X=Left");
-        _telemetry.addData("Dpad", "L/R=Yaw, U/D=Pitch");
+        _telemetry.addData("Pitch", "Dpad Up/Down");
+        _telemetry.addData("Yaw", "Dpad Left/Right");
+        _telemetry.addData("Y Button", "ALIGN ROBOT to Tag");
         _telemetry.addData("------------------------", "");
         _telemetry.addData("Yaw", "%.3f", _tuneYaw);
         _telemetry.addData("Pitch", "%.3f", _tunePitch);
@@ -426,7 +444,13 @@ public class Camera
         _telemetry.addData("Connected", _isConnected);
         _telemetry.addData("Block Count", _blocks.length);
         _telemetry.addData("Last Tag ID", _lastDetectedTag);
-        _telemetry.addData("Last Processed", _lastProcessedTag);
+        _telemetry.addData("Centering", _isCentering ? "ACTIVE" : "Off");
+        if (_blocks.length > 0)
+        {
+            int errorX = _blocks[0].x - SCREEN_CENTER_X;
+            _telemetry.addData("Center Error", "%d px (%s)", errorX, 
+                    Math.abs(errorX) <= CENTER_DEADBAND ? "CENTERED" : (errorX > 0 ? "RIGHT" : "LEFT"));
+        }
         
         //--- Show all detected blocks
         for (int i = 0; i < _blocks.length; i++)
