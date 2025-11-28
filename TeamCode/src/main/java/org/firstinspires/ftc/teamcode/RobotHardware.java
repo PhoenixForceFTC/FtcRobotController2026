@@ -268,6 +268,9 @@ public class RobotHardware {
         );
         camera.initialize();
 
+        //--- Set camera reference on kickers for alignment-based firing
+        kickers.setCamera(camera);
+
         //------------------------------------------------------------------------------------------
         //--- Messages
         //------------------------------------------------------------------------------------------

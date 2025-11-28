@@ -25,11 +25,13 @@ public class Camera
     private static final int TAG_SEQUENCE_PPG = 4;
     private static final int TAG_RED_TARGET = 2;
 
-    //--- HuskyLens screen dimensions (for centering)
+    //--- HuskyLens screen dimensions (for alignment)
     private static final int SCREEN_CENTER_X = 160;  // 320 / 2
-    private static final int CENTER_DEADBAND = 15;   // Pixels from center to consider "centered"
-    private static final double CENTER_SPEED_MIN = 0.15;
-    private static final double CENTER_SPEED_MAX = 0.4;
+    private static final int ALIGN_DEADBAND = 35;    // Pixels from center to consider "aligned" (increased)
+    private static final int ALIGN_SLOWZONE = 60;    // Pixels from center to start slowing down
+    private static final double ALIGN_SPEED_MIN = 0.08;  // Minimum rotation speed (reduced)
+    private static final double ALIGN_SPEED_MAX = 0.25;  // Maximum rotation speed (reduced)
+    private static final double ALIGN_SETTLE_TIME = 0.15; // Seconds to wait after reaching deadband
     //endregion
 
     //region --- Hardware ---
@@ -60,8 +62,15 @@ public class Camera
     //--- Tag detection state (to prevent repeated triggers)
     private int _lastProcessedTag = -1;
 
-    //--- Centering state
-    private boolean _isCentering = false;
+    //--- Alignment lock state
+    private boolean _alignmentLockEnabled = false;  // Manual lock via Y button
+    private boolean _autoAlignForFiring = false;    // Auto-align when firing at target
+    private boolean _isAligned = false;             // Currently within deadband
+    private boolean _yButtonPressed = false;        // Debounce Y button
+    private boolean _aButtonPressed = false;        // Debounce A button
+    private ElapsedTime _alignSettleTimer = new ElapsedTime();  // Timer for settling
+    private boolean _isSettling = false;            // Currently in settling period
+    private int _lastErrorDirection = 0;            // Track direction to detect oscillation
     //endregion
 
     //region --- Constructor ---
@@ -273,65 +282,175 @@ public class Camera
 
     //endregion
 
-    //region --- Public Methods - Robot Centering ---
+    //region --- Public Methods - Robot Alignment ---
 
-    //--- Rotate robot to align with AprilTag when Y button is pressed on gamepad2
-    //--- Call this from fineTuneCameraPos() or separately in your main loop
-    public void centerOnAprilTag()
+    //--- Enable alignment lock (Y button or called programmatically)
+    public void enableAlignmentLock()
     {
-        if (_drive == null)
+        _alignmentLockEnabled = true;
+        _drive.setBrakeMode(true);  // Enable brake mode to resist being pushed
+    }
+
+    //--- Disable alignment lock (A button or called programmatically)
+    public void disableAlignmentLock()
+    {
+        _alignmentLockEnabled = false;
+        _autoAlignForFiring = false;
+        _isAligned = false;
+        _drive.setBrakeMode(false);  // Return to float mode
+        _drive.stopMotors();
+    }
+
+    //--- Enable auto-alignment for firing (called by Kickers when firing at target)
+    public void enableAutoAlignForFiring()
+    {
+        _autoAlignForFiring = true;
+        _drive.setBrakeMode(true);
+    }
+
+    //--- Disable auto-alignment after firing sequence complete
+    public void disableAutoAlignForFiring()
+    {
+        _autoAlignForFiring = false;
+        if (!_alignmentLockEnabled)
         {
-            return; // Drive not set, can't center
+            _drive.setBrakeMode(false);
+        }
+        _drive.stopMotors();
+    }
+
+    //--- Check if we're currently aligned (within deadband)
+    public boolean isAligned()
+    {
+        return _isAligned;
+    }
+
+    //--- Check if alignment lock is enabled (manual or auto)
+    public boolean isAlignmentActive()
+    {
+        return _alignmentLockEnabled || _autoAlignForFiring;
+    }
+
+    //--- Check if we're looking at a target (blue or red)
+    public boolean isLookingAtTarget()
+    {
+        return _lastDetectedTag == TAG_BLUE_TARGET || _lastDetectedTag == TAG_RED_TARGET;
+    }
+
+    //--- Run alignment logic - call this every loop when alignment is active
+    private void runAlignment()
+    {
+        if (_blocks.length == 0)
+        {
+            _isAligned = false;
+            _isSettling = false;
+            _drive.stopMotors();
+            return;
         }
 
-        //--- Check if Y button is pressed
-        if (_gamepad2.y && _blocks.length > 0)
+        //--- Get the X position of the first detected block
+        int blockX = _blocks[0].x;
+        int errorX = blockX - SCREEN_CENTER_X;
+        int absError = Math.abs(errorX);
+
+        //--- Check if we're within the deadband (aligned)
+        if (absError <= ALIGN_DEADBAND)
         {
-            _isCentering = true;
-
-            //--- Get the X position of the first detected block
-            int blockX = _blocks[0].x;
-            int errorX = blockX - SCREEN_CENTER_X;
-
-            //--- Check if we're within the deadband (centered enough)
-            if (Math.abs(errorX) <= CENTER_DEADBAND)
+            //--- Start settling timer if not already settling
+            if (!_isSettling)
             {
-                //--- Centered, stop motors
-                _drive.stopMotors();
+                _isSettling = true;
+                _alignSettleTimer.reset();
+                _drive.stopMotors();  // Stop and let brake mode hold
+            }
+            
+            //--- Check if we've been settled long enough
+            if (_alignSettleTimer.seconds() >= ALIGN_SETTLE_TIME)
+            {
+                _isAligned = true;
+            }
+            
+            //--- Keep motors stopped while settling
+            _drive.stopMotors();
+        }
+        //--- In the slow zone - slow approach, very gentle corrections
+        else if (absError <= ALIGN_SLOWZONE)
+        {
+            _isAligned = false;
+            _isSettling = false;
+            
+            //--- Use minimum speed for fine adjustments
+            double speed = ALIGN_SPEED_MIN;
+
+            //--- Rotate in the correct direction
+            if (errorX > 0)
+            {
+                _drive.rotateRight(speed);
             }
             else
             {
-                //--- Calculate proportional speed based on error
-                //--- Max error is ~160 pixels (half screen width)
-                double proportion = Math.abs(errorX) / 160.0;
-                double speed = CENTER_SPEED_MIN + (proportion * (CENTER_SPEED_MAX - CENTER_SPEED_MIN));
-                speed = Math.min(speed, CENTER_SPEED_MAX);
-
-                //--- Rotate in the correct direction
-                if (errorX > 0)
-                {
-                    //--- Block is to the right of center, rotate right
-                    _drive.rotateRight(speed);
-                }
-                else
-                {
-                    //--- Block is to the left of center, rotate left
-                    _drive.rotateLeft(speed);
-                }
+                _drive.rotateLeft(speed);
             }
         }
-        else if (_isCentering)
+        else
         {
-            //--- Just released dpad_up, stop motors
-            _isCentering = false;
-            _drive.stopMotors();
+            _isAligned = false;
+            _isSettling = false;
+
+            //--- Calculate proportional speed based on error
+            //--- Faster when far, slower when close
+            double proportion = (double)absError / 160.0;
+            double speed = ALIGN_SPEED_MIN + (proportion * (ALIGN_SPEED_MAX - ALIGN_SPEED_MIN));
+            speed = Math.min(speed, ALIGN_SPEED_MAX);
+
+            //--- Rotate in the correct direction
+            if (errorX > 0)
+            {
+                _drive.rotateRight(speed);
+            }
+            else
+            {
+                _drive.rotateLeft(speed);
+            }
         }
     }
 
-    //--- Check if currently centering
-    public boolean isCentering()
+    //--- Handle alignment controls (Y to enable, A to disable)
+    public void handleAlignmentControls()
     {
-        return _isCentering;
+        //--- Y button - enable alignment lock
+        if (_gamepad2.y)
+        {
+            if (!_yButtonPressed)
+            {
+                _yButtonPressed = true;
+                enableAlignmentLock();
+            }
+        }
+        else
+        {
+            _yButtonPressed = false;
+        }
+
+        //--- A button - disable alignment lock
+        if (_gamepad2.a)
+        {
+            if (!_aButtonPressed)
+            {
+                _aButtonPressed = true;
+                disableAlignmentLock();
+            }
+        }
+        else
+        {
+            _aButtonPressed = false;
+        }
+
+        //--- Run alignment if enabled
+        if (_alignmentLockEnabled || _autoAlignForFiring)
+        {
+            runAlignment();
+        }
     }
 
     //endregion
@@ -389,8 +508,8 @@ public class Camera
     //--- Fine tune camera position using gamepad2
     //--- Dpad Up/Down: Pitch
     //--- Dpad Left/Right: Yaw
-    //--- Y: Center robot on AprilTag
-    //--- A/B/X: (available for other uses)
+    //--- Y: Enable alignment lock
+    //--- A: Disable alignment lock
     public void fineTuneCameraPos()
     {
         //--- Initialize positions on first call
@@ -401,8 +520,8 @@ public class Camera
             _tunePitch = _servoPitch.getPosition();
         }
 
-        //--- Y button - center robot on AprilTag
-        centerOnAprilTag();
+        //--- Handle alignment controls (Y to enable, A to disable)
+        handleAlignmentControls();
 
         //--- Dpad Up - pitch up
         if (_gamepad2.dpad_up)
@@ -436,7 +555,8 @@ public class Camera
         _telemetry.addData("--- CAMERA FINE TUNE ---", "");
         _telemetry.addData("Pitch", "Dpad Up/Down");
         _telemetry.addData("Yaw", "Dpad Left/Right");
-        _telemetry.addData("Y Button", "ALIGN ROBOT to Tag");
+        _telemetry.addData("Y Button", "ENABLE Alignment Lock");
+        _telemetry.addData("A Button", "DISABLE Alignment Lock");
         _telemetry.addData("------------------------", "");
         _telemetry.addData("Yaw", "%.3f", _tuneYaw);
         _telemetry.addData("Pitch", "%.3f", _tunePitch);
@@ -444,12 +564,14 @@ public class Camera
         _telemetry.addData("Connected", _isConnected);
         _telemetry.addData("Block Count", _blocks.length);
         _telemetry.addData("Last Tag ID", _lastDetectedTag);
-        _telemetry.addData("Centering", _isCentering ? "ACTIVE" : "Off");
+        _telemetry.addData("Alignment Lock", _alignmentLockEnabled ? "ENABLED" : "Off");
+        _telemetry.addData("Auto-Align Fire", _autoAlignForFiring ? "ACTIVE" : "Off");
+        _telemetry.addData("Is Aligned", _isAligned ? "YES" : "No");
         if (_blocks.length > 0)
         {
             int errorX = _blocks[0].x - SCREEN_CENTER_X;
-            _telemetry.addData("Center Error", "%d px (%s)", errorX, 
-                    Math.abs(errorX) <= CENTER_DEADBAND ? "CENTERED" : (errorX > 0 ? "RIGHT" : "LEFT"));
+            _telemetry.addData("Align Error", "%d px (%s)", errorX, 
+                    Math.abs(errorX) <= ALIGN_DEADBAND ? "ALIGNED" : (errorX > 0 ? "RIGHT" : "LEFT"));
         }
         
         //--- Show all detected blocks

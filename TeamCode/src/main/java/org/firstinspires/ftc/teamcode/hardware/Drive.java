@@ -196,6 +196,18 @@ public class Drive
         MotorUtils.setPower(_rearRight, -speed);
     }
 
+    //--- Set brake mode for all drive motors (true = brake, false = float)
+    public void setBrakeMode(boolean brake)
+    {
+        DcMotor.ZeroPowerBehavior behavior = brake ? 
+                DcMotor.ZeroPowerBehavior.BRAKE : 
+                DcMotor.ZeroPowerBehavior.FLOAT;
+        _frontLeft.setZeroPowerBehavior(behavior);
+        _frontRight.setZeroPowerBehavior(behavior);
+        _rearLeft.setZeroPowerBehavior(behavior);
+        _rearRight.setZeroPowerBehavior(behavior);
+    }
+
     //--- Stops all drive motors
     public void stopMotors()
     {

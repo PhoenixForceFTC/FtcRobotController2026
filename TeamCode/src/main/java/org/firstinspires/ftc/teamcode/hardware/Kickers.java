@@ -60,6 +60,9 @@ public class Kickers
 
     //--- Flywheel reference for velocity-based firing
     private Flywheel _flywheel = null;
+
+    //--- Camera reference for alignment-based firing
+    private Camera _camera = null;
     //endregion
 
     //region --- State ---
@@ -92,6 +95,10 @@ public class Kickers
     private double _targetVelocity = 0.0;
     private boolean _waitingForVelocity = false;        //--- Waiting for velocity before firing
     private boolean _sequenceWaitingForVelocity = false; //--- Waiting for velocity recovery during sequence
+
+    //--- Alignment-based firing state
+    private boolean _waitingForAlignment = false;       //--- Waiting for alignment before firing
+    private boolean _alignmentFireAll = false;          //--- true = fire all, false = fire sequence
 
     //--- Input debouncing
     private boolean _triggerWasPressed = false;
@@ -173,6 +180,14 @@ public class Kickers
             if (_flywheel != null && _flywheel.isAtTarget())
             {
                 _waitingForVelocity = false;
+                
+                //--- Now check if we also need alignment
+                if (_waitingForAlignment && _camera != null)
+                {
+                    //--- Still need to wait for alignment
+                    return;
+                }
+                
                 if (_velocityFireAll)
                 {
                     fireAll();
@@ -182,6 +197,31 @@ public class Kickers
                     fireSequence();
                 }
                 _velocityFirePending = false;
+            }
+        }
+
+        //--- Handle alignment-based firing (waiting for alignment before firing)
+        if (_waitingForAlignment && _camera != null)
+        {
+            if (_camera.isAligned())
+            {
+                _waitingForAlignment = false;
+                
+                //--- Check if we're also waiting for velocity
+                if (_velocityFirePending && _waitingForVelocity)
+                {
+                    //--- Still need velocity, will fire when velocity is ready
+                    return;
+                }
+                
+                if (_alignmentFireAll)
+                {
+                    fireAll();
+                }
+                else
+                {
+                    fireSequence();
+                }
             }
         }
 
@@ -201,6 +241,12 @@ public class Kickers
             _sequenceFiring = false;
             _sequenceStep = 0;
             _sequenceWaitingForVelocity = false;
+            
+            //--- Disable auto-alignment after sequence completes
+            if (_camera != null)
+            {
+                _camera.disableAutoAlignForFiring();
+            }
             return;
         }
 
@@ -270,12 +316,15 @@ public class Kickers
 
     //--- Call this in your main loop to handle gamepad controls
     //--- Gamepad1 Y/B/X/A: Set velocity presets (4000/3000/2000/1500 RPM)
-    //--- Right Trigger: Fire all kickers at once (waits for velocity if set)
-    //--- Right Bumper: Fire in sequence based on ball colors (waits for velocity between shots)
+    //--- Right Trigger: Fire all kickers at once (waits for velocity and alignment if looking at target)
+    //--- Right Bumper: Fire in sequence based on ball colors (waits for velocity between shots, aligns if looking at target)
     public void controlKickers()
     {
         //--- Velocity preset buttons (gamepad1)
         handleVelocityPresets();
+
+        //--- Check if we're looking at a target (for auto-alignment)
+        boolean lookingAtTarget = (_camera != null && _camera.isLookingAtTarget());
 
         //--- Right trigger - fire all (detect press, not hold)
         //--- Also cancels any sequence in progress
@@ -286,25 +335,41 @@ public class Kickers
                 _triggerWasPressed = true;
                 _sequenceFiring = false;  //--- Cancel any sequence in progress
                 _velocityFirePending = false;  //--- Cancel any pending velocity fire
+                _waitingForAlignment = false;  //--- Cancel any pending alignment
 
-                //--- If velocity is set and flywheel exists, wait for velocity
+                //--- Determine what we need to wait for
+                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
+                boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
+
+                //--- Start velocity if needed
                 if (_flywheel != null && _targetVelocity > 0)
                 {
                     _flywheel.setVelocity(_targetVelocity);
-                    if (_flywheel.isAtTarget())
+                }
+
+                //--- Start alignment if looking at target
+                if (lookingAtTarget && _camera != null)
+                {
+                    _camera.enableAutoAlignForFiring();
+                }
+
+                //--- Check if we can fire immediately or need to wait
+                if (!needVelocity && !needAlignment)
+                {
+                    fireAll();
+                    //--- Disable alignment after firing all (no sequence)
+                    if (_camera != null)
                     {
-                        fireAll();
-                    }
-                    else
-                    {
-                        _velocityFirePending = true;
-                        _velocityFireAll = true;
-                        _waitingForVelocity = true;
+                        _camera.disableAutoAlignForFiring();
                     }
                 }
                 else
                 {
-                    fireAll();
+                    _velocityFirePending = needVelocity;
+                    _velocityFireAll = true;
+                    _waitingForVelocity = needVelocity;
+                    _waitingForAlignment = needAlignment;
+                    _alignmentFireAll = true;
                 }
             }
         }
@@ -317,28 +382,38 @@ public class Kickers
         //--- Only starts if no sequence is already in progress
         if (_gamepad1.right_bumper)
         {
-            if (!_bumperWasPressed && !_sequenceFiring && !_velocityFirePending)
+            if (!_bumperWasPressed && !_sequenceFiring && !_velocityFirePending && !_waitingForAlignment)
             {
                 _bumperWasPressed = true;
 
-                //--- If velocity is set and flywheel exists, wait for velocity
+                //--- Determine what we need to wait for
+                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
+                boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
+
+                //--- Start velocity if needed
                 if (_flywheel != null && _targetVelocity > 0)
                 {
                     _flywheel.setVelocity(_targetVelocity);
-                    if (_flywheel.isAtTarget())
-                    {
-                        fireSequence();
-                    }
-                    else
-                    {
-                        _velocityFirePending = true;
-                        _velocityFireAll = false;
-                        _waitingForVelocity = true;
-                    }
+                }
+
+                //--- Start alignment if looking at target
+                if (lookingAtTarget && _camera != null)
+                {
+                    _camera.enableAutoAlignForFiring();
+                }
+
+                //--- Check if we can fire immediately or need to wait
+                if (!needVelocity && !needAlignment)
+                {
+                    fireSequence();
                 }
                 else
                 {
-                    fireSequence();
+                    _velocityFirePending = needVelocity;
+                    _velocityFireAll = false;
+                    _waitingForVelocity = needVelocity;
+                    _waitingForAlignment = needAlignment;
+                    _alignmentFireAll = false;
                 }
             }
         }
@@ -513,6 +588,18 @@ public class Kickers
     public Sequence getSequence()
     {
         return _sequence;
+    }
+
+    //--- Set the camera reference (for alignment-based firing)
+    public void setCamera(Camera camera)
+    {
+        _camera = camera;
+    }
+
+    //--- Check if sequence firing is complete
+    public boolean isSequenceComplete()
+    {
+        return !_sequenceFiring && !_velocityFirePending && !_waitingForAlignment;
     }
 
     //endregion
