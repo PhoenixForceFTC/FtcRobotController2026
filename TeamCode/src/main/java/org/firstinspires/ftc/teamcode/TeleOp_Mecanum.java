@@ -92,6 +92,11 @@ public class TeleOp_Mecanum extends LinearOpMode
         _robot.lights.initialize();
 
         //------------------------------------------------------------------------------------------
+        //--- Camera Mode (switch from PRE_MATCH to TELEOP)
+        //------------------------------------------------------------------------------------------
+        _robot.camera.setModeTeleOp();  //--- Goals only, enable scanning
+
+        //------------------------------------------------------------------------------------------
         //--- Run until the end of the match (driver presses STOP)
         //------------------------------------------------------------------------------------------
         while (opModeIsActive()) {

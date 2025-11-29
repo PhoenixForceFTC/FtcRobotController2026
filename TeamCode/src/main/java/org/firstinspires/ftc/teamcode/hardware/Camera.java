@@ -27,10 +27,11 @@ public class Camera
 
     //--- HuskyLens screen dimensions (for alignment)
     private static final int SCREEN_CENTER_X = 160;  // 320 / 2
-    private static final int ALIGN_DEADBAND = 20; // was 35    // Pixels from center to consider "aligned"
+    private static final int SCREEN_CENTER_Y = 120;  // 240 / 2
+    private static final int ALIGN_DEADBAND = 20;    // Pixels from center to consider "aligned"
     private static final int ALIGN_SLOWZONE = 60;    // Pixels from center to start slowing down
-    private static final double ALIGN_SPEED_MIN = 0.08;  // Minimum rotation speed (reduced)
-    private static final double ALIGN_SPEED_MAX = 0.25;  // Maximum rotation speed (reduced)
+    private static final double ALIGN_SPEED_MIN = 0.08;  // Minimum rotation speed
+    private static final double ALIGN_SPEED_MAX = 0.25;  // Maximum rotation speed
     private static final double ALIGN_SETTLE_TIME = 0.15; // Seconds to wait after reaching deadband
 
     //--- Distance estimation constants
@@ -40,11 +41,34 @@ public class Camera
     private static final double HUSKY_FOCAL_LENGTH = 306.0;  // Calibrated focal length
 
     //--- Velocity suggestion based on distance (linear interpolation)
-    //--- At NEAR distance, use MIN velocity; at FAR distance, use MAX velocity
     private static final double VELOCITY_NEAR_DISTANCE = 36.0;   // 3 feet in inches
     private static final double VELOCITY_FAR_DISTANCE = 120.0;   // 10 feet in inches
     private static final double VELOCITY_MIN_RPM = 1500.0;       // RPM at near distance
     private static final double VELOCITY_MAX_RPM = 4000.0;       // RPM at far distance
+
+    //--- Pitch scanning constants
+    private static final double PITCH_SCAN_MIN = 0.50;   // Lowest pitch (looking DOWN toward floor)
+    private static final double PITCH_SCAN_MAX = 0.75;   // Highest pitch (looking UP toward ceiling)
+    private static final double PITCH_SCAN_STEP = 0.01;  // Step size for scanning (smaller = smoother)
+    private static final double PITCH_DEADBAND = 30;     // Pixels from Y center to consider "centered"
+
+    //--- Pre-match camera position (fixed, no scanning)
+    private static final double PREMATCH_YAW = 0.5;      // Yaw for pre-match (adjust as needed)
+    private static final double PREMATCH_PITCH = 0.70;   // Pitch for pre-match obelisk viewing
+
+    //--- Tag heights from floor (inches) - for reference
+    //--- Goal tags: 38.75" - 9.25" = 29.5" center height
+    //--- Obelisk tags: 23" - 3.75" = 19.25" center height
+    //--- Camera height: 17" from floor
+    //endregion
+
+    //region --- Enums ---
+    public enum ScanMode
+    {
+        PRE_MATCH,  // Obelisk only (sequence tags, ignore goal targets)
+        TELEOP,     // Goals only (ignore obelisk/sequence tags)
+        DEMO        // Any tag triggers (for testing/demo)
+    }
     //endregion
 
     //region --- Hardware ---
@@ -86,6 +110,14 @@ public class Camera
 
     //--- Distance estimation state
     private double _lastDistanceInches = -1.0;      // Last calculated distance (-1 if no tag)
+
+    //--- Scan mode state
+    private ScanMode _scanMode = ScanMode.DEMO;     // Current operating mode
+    private boolean _isScanning = false;            // Currently scanning for tags
+    private boolean _scanDirectionUp = true;        // Scan direction (true = increasing pitch)
+    private double _currentScanPitch = PITCH_CENTER; // Current pitch during scan
+    private ElapsedTime _scanTimer = new ElapsedTime(); // Timer for scan steps
+    private static final double SCAN_STEP_TIME = 0.15;  // Time between scan steps (seconds)
     //endregion
 
     //region --- Constructor ---
@@ -143,15 +175,23 @@ public class Camera
             //--- Read detected blocks from HuskyLens
             _blocks = _huskyLens.blocks();
 
+            //--- Filter blocks based on current scan mode
+            HuskyLens.Block targetBlock = findTargetBlock();
+
             //--- Update distance estimation
             updateDistance();
 
             //--- Process detected AprilTags
-            if (_blocks.length > 0)
+            if (targetBlock != null)
             {
-                //--- Get the first detected block (could prioritize by size/distance)
-                int detectedId = _blocks[0].id;
+                //--- Stop scanning - we found a valid tag
+                _isScanning = false;
+
+                int detectedId = targetBlock.id;
                 _lastDetectedTag = detectedId;
+
+                //--- Adjust pitch to keep tag centered vertically
+                adjustPitchToTrack(targetBlock);
 
                 //--- Only process if it's a new tag (prevent repeated triggers)
                 if (detectedId != _lastProcessedTag)
@@ -162,7 +202,7 @@ public class Camera
             }
             else
             {
-                //--- No tags detected
+                //--- No valid tags detected - start scanning
                 if (_lastDetectedTag != -1)
                 {
                     //--- Just lost sight of tag, turn off lights
@@ -170,6 +210,12 @@ public class Camera
                 }
                 _lastDetectedTag = -1;
                 _lastProcessedTag = -1;
+
+                //--- Scan for tags (only in TELEOP and DEMO modes)
+                if (_scanMode != ScanMode.PRE_MATCH)
+                {
+                    runPitchScan();
+                }
             }
         }
         catch (Exception e)
@@ -177,6 +223,108 @@ public class Camera
             //--- HuskyLens communication error
             _isConnected = false;
         }
+    }
+
+    //--- Find the best target block based on current scan mode
+    private HuskyLens.Block findTargetBlock()
+    {
+        if (_blocks.length == 0) return null;
+
+        for (HuskyLens.Block block : _blocks)
+        {
+            if (isValidTagForMode(block.id))
+            {
+                return block;
+            }
+        }
+        return null;
+    }
+
+    //--- Check if a tag ID is valid for the current scan mode
+    private boolean isValidTagForMode(int tagId)
+    {
+        switch (_scanMode)
+        {
+            case PRE_MATCH:
+                //--- Only sequence tags (obelisk)
+                return tagId == TAG_SEQUENCE_GPP || 
+                       tagId == TAG_SEQUENCE_PGP || 
+                       tagId == TAG_SEQUENCE_PPG;
+
+            case TELEOP:
+                //--- Only goal tags
+                return tagId == TAG_BLUE_TARGET || tagId == TAG_RED_TARGET;
+
+            case DEMO:
+            default:
+                //--- Any tag is valid
+                return tagId == TAG_BLUE_TARGET || 
+                       tagId == TAG_RED_TARGET ||
+                       tagId == TAG_SEQUENCE_GPP || 
+                       tagId == TAG_SEQUENCE_PGP || 
+                       tagId == TAG_SEQUENCE_PPG;
+        }
+    }
+
+    //--- Adjust pitch to keep the detected tag vertically centered
+    private void adjustPitchToTrack(HuskyLens.Block block)
+    {
+        int errorY = block.y - SCREEN_CENTER_Y;
+        
+        //--- Only adjust if outside deadband
+        if (Math.abs(errorY) > PITCH_DEADBAND)
+        {
+            //--- Positive errorY means tag is below center, need to DECREASE pitch (look down)
+            //--- Negative errorY means tag is above center, need to INCREASE pitch (look up)
+            double adjustment = (errorY > 0) ? -PITCH_SCAN_STEP : PITCH_SCAN_STEP;
+            double newPitch = _currentScanPitch + adjustment;
+            
+            //--- Clamp to scan range to prevent tracking beyond limits
+            newPitch = Math.max(PITCH_SCAN_MIN, Math.min(PITCH_SCAN_MAX, newPitch));
+            
+            _currentScanPitch = newPitch;
+            _servoPitch.setPosition(_currentScanPitch);
+            _tunePitch = _currentScanPitch;
+        }
+    }
+
+    //--- Run pitch scanning to find tags
+    private void runPitchScan()
+    {
+        //--- Start scanning if not already
+        if (!_isScanning)
+        {
+            _isScanning = true;
+            _scanTimer.reset();
+            return;
+        }
+
+        //--- Only step at defined intervals
+        if (_scanTimer.seconds() < SCAN_STEP_TIME) return;
+        _scanTimer.reset();
+
+        //--- Move pitch in current direction
+        if (_scanDirectionUp)
+        {
+            _currentScanPitch += PITCH_SCAN_STEP;
+            if (_currentScanPitch >= PITCH_SCAN_MAX)
+            {
+                _currentScanPitch = PITCH_SCAN_MAX;
+                _scanDirectionUp = false;
+            }
+        }
+        else
+        {
+            _currentScanPitch -= PITCH_SCAN_STEP;
+            if (_currentScanPitch <= PITCH_SCAN_MIN)
+            {
+                _currentScanPitch = PITCH_SCAN_MIN;
+                _scanDirectionUp = true;
+            }
+        }
+
+        _servoPitch.setPosition(_currentScanPitch);
+        _tunePitch = _currentScanPitch;
     }
 
     //--- Process detected AprilTag and update kickers/lights
@@ -262,6 +410,72 @@ public class Camera
     public double getPitch()
     {
         return _servoPitch.getPosition();
+    }
+
+    //endregion
+
+    //region --- Public Methods - Scan Mode ---
+
+    //--- Set the scan mode (PRE_MATCH, TELEOP, DEMO)
+    public void setScanMode(ScanMode mode)
+    {
+        _scanMode = mode;
+        _lastProcessedTag = -1;  // Allow re-triggering when mode changes
+        
+        if (mode == ScanMode.PRE_MATCH)
+        {
+            //--- Pre-match: set camera to fixed position, no scanning
+            _isScanning = false;
+            setPosition(PREMATCH_YAW, PREMATCH_PITCH);
+            _currentScanPitch = PREMATCH_PITCH;
+        }
+        else
+        {
+            //--- TELEOP/DEMO: start at scan maximum (looking UP toward goals) and scan downward
+            setPosition(YAW_CENTER, PITCH_SCAN_MAX);
+            _currentScanPitch = PITCH_SCAN_MAX;
+            _scanDirectionUp = false;  // Will decrease pitch (scan downward toward floor)
+            _isScanning = false;  // Will start on next run() if no tag found
+        }
+    }
+
+    //--- Get the current scan mode
+    public ScanMode getScanMode()
+    {
+        return _scanMode;
+    }
+
+    //--- Convenience methods for setting scan mode
+    public void setModePreMatch()
+    {
+        setScanMode(ScanMode.PRE_MATCH);
+    }
+
+    public void setModeTeleOp()
+    {
+        setScanMode(ScanMode.TELEOP);
+    }
+
+    public void setModeDemo()
+    {
+        setScanMode(ScanMode.DEMO);
+    }
+
+    //--- Check if currently scanning for tags
+    public boolean isScanning()
+    {
+        return _isScanning;
+    }
+
+    //--- Set the pre-match camera position (for viewing obelisk)
+    //--- Call this during init to adjust where camera looks for sequence tags
+    public void setPreMatchPosition(double yaw, double pitch)
+    {
+        if (_scanMode == ScanMode.PRE_MATCH)
+        {
+            setPosition(yaw, pitch);
+            _currentScanPitch = pitch;
+        }
     }
 
     //endregion
@@ -632,6 +846,8 @@ public class Camera
         _telemetry.addData("------------------------", "");
         _telemetry.addData("Yaw", "%.3f", _tuneYaw);
         _telemetry.addData("Pitch", "%.3f", _tunePitch);
+        _telemetry.addData("Scan Mode", _scanMode);
+        _telemetry.addData("Scanning", _isScanning ? "YES" : "No");
         _telemetry.addData("------------------------", "");
         _telemetry.addData("Connected", _isConnected);
         _telemetry.addData("Block Count", _blocks.length);
@@ -668,6 +884,8 @@ public class Camera
             _telemetry.addData("Camera Connected", _isConnected);
             _telemetry.addData("Camera Yaw", "%.2f", _servoYaw.getPosition());
             _telemetry.addData("Camera Pitch", "%.2f", _servoPitch.getPosition());
+            _telemetry.addData("Scan Mode", _scanMode);
+            _telemetry.addData("Scanning", _isScanning);
             _telemetry.addData("Last Tag", _lastDetectedTag);
             _telemetry.addData("Blocks Detected", _blocks.length);
             _telemetry.addData("Distance", getDistanceFormatted());
