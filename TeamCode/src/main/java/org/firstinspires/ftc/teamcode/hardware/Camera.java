@@ -13,25 +13,38 @@ public class Camera
     //region --- Constants ---
     //--- Default servo positions (center)
     private static final double YAW_CENTER = 0.5;
-    private static final double PITCH_CENTER = 0.6;
+    private static final double PITCH_CENTER = 0.65;
 
     //--- Fine tune increment
     private static final double TUNE_INCREMENT = 0.01;
 
     //--- AprilTag IDs
+    private static final int TAG_RED_TARGET = 2;
     private static final int TAG_BLUE_TARGET = 3;
     private static final int TAG_SEQUENCE_GPP = 1;
     private static final int TAG_SEQUENCE_PGP = 5;
     private static final int TAG_SEQUENCE_PPG = 4;
-    private static final int TAG_RED_TARGET = 2;
 
     //--- HuskyLens screen dimensions (for alignment)
     private static final int SCREEN_CENTER_X = 160;  // 320 / 2
-    private static final int ALIGN_DEADBAND = 35;    // Pixels from center to consider "aligned" (increased)
+    private static final int ALIGN_DEADBAND = 20; // was 35    // Pixels from center to consider "aligned"
     private static final int ALIGN_SLOWZONE = 60;    // Pixels from center to start slowing down
     private static final double ALIGN_SPEED_MIN = 0.08;  // Minimum rotation speed (reduced)
     private static final double ALIGN_SPEED_MAX = 0.25;  // Maximum rotation speed (reduced)
     private static final double ALIGN_SETTLE_TIME = 0.15; // Seconds to wait after reaching deadband
+
+    //--- Distance estimation constants
+    //--- Formula: distance = (realSize * focalLength) / pixelSize
+    //--- Calibrated from measurements: 36"@55px, 60"@33px, 96"@21px → avg focal length 306
+    private static final double TAG_REAL_SIZE_INCHES = 6.5;  // Physical AprilTag size
+    private static final double HUSKY_FOCAL_LENGTH = 306.0;  // Calibrated focal length
+
+    //--- Velocity suggestion based on distance (linear interpolation)
+    //--- At NEAR distance, use MIN velocity; at FAR distance, use MAX velocity
+    private static final double VELOCITY_NEAR_DISTANCE = 36.0;   // 3 feet in inches
+    private static final double VELOCITY_FAR_DISTANCE = 120.0;   // 10 feet in inches
+    private static final double VELOCITY_MIN_RPM = 1500.0;       // RPM at near distance
+    private static final double VELOCITY_MAX_RPM = 4000.0;       // RPM at far distance
     //endregion
 
     //region --- Hardware ---
@@ -70,6 +83,9 @@ public class Camera
     private boolean _aButtonPressed = false;        // Debounce A button
     private ElapsedTime _alignSettleTimer = new ElapsedTime();  // Timer for settling
     private boolean _isSettling = false;            // Currently in settling period
+
+    //--- Distance estimation state
+    private double _lastDistanceInches = -1.0;      // Last calculated distance (-1 if no tag)
     //endregion
 
     //region --- Constructor ---
@@ -126,6 +142,9 @@ public class Camera
         {
             //--- Read detected blocks from HuskyLens
             _blocks = _huskyLens.blocks();
+
+            //--- Update distance estimation
+            updateDistance();
 
             //--- Process detected AprilTags
             if (_blocks.length > 0)
@@ -277,6 +296,66 @@ public class Camera
     public void resetLastProcessedTag()
     {
         _lastProcessedTag = -1;
+    }
+
+    //endregion
+
+    //region --- Public Methods - Distance Estimation ---
+
+    //--- Get the estimated distance to the AprilTag in inches (-1 if no tag detected)
+    public double getDistanceInches()
+    {
+        return _lastDistanceInches;
+    }
+
+    //--- Get distance formatted as inches string
+    public String getDistanceFormatted()
+    {
+        if (_lastDistanceInches < 0) return "No tag";
+        
+        int inches = (int) Math.round(_lastDistanceInches);
+        return String.format("%d in", inches);
+    }
+
+    //--- Calculate distance from the detected AprilTag
+    //--- Uses the formula: distance = (realSize * focalLength) / pixelSize
+    private void updateDistance()
+    {
+        if (_blocks.length == 0)
+        {
+            _lastDistanceInches = -1.0;
+            return;
+        }
+
+        //--- Use the width of the tag (more reliable than height for distance)
+        int pixelWidth = _blocks[0].width;
+        
+        if (pixelWidth <= 0)
+        {
+            _lastDistanceInches = -1.0;
+            return;
+        }
+
+        //--- Calculate distance using similar triangles
+        _lastDistanceInches = (TAG_REAL_SIZE_INCHES * HUSKY_FOCAL_LENGTH) / pixelWidth;
+    }
+
+    //--- Get suggested flywheel velocity based on distance (returns -1 if no tag)
+    //--- Uses linear interpolation between near/far distances
+    public double getSuggestedVelocity()
+    {
+        if (_lastDistanceInches < 0) return -1.0;
+        
+        //--- Clamp distance to valid range
+        double clampedDistance = Math.max(VELOCITY_NEAR_DISTANCE, 
+                                          Math.min(VELOCITY_FAR_DISTANCE, _lastDistanceInches));
+        
+        //--- Linear interpolation: velocity = min + (max - min) * ((distance - near) / (far - near))
+        double ratio = (clampedDistance - VELOCITY_NEAR_DISTANCE) / 
+                       (VELOCITY_FAR_DISTANCE - VELOCITY_NEAR_DISTANCE);
+        double suggestedVelocity = VELOCITY_MIN_RPM + (VELOCITY_MAX_RPM - VELOCITY_MIN_RPM) * ratio;
+        
+        return suggestedVelocity;
     }
 
     //endregion
@@ -565,6 +644,8 @@ public class Camera
             int errorX = _blocks[0].x - SCREEN_CENTER_X;
             _telemetry.addData("Align Error", "%d px (%s)", errorX, 
                     Math.abs(errorX) <= ALIGN_DEADBAND ? "ALIGNED" : (errorX > 0 ? "RIGHT" : "LEFT"));
+            _telemetry.addData("Distance", getDistanceFormatted());
+            _telemetry.addData("Suggested Velocity", "%.0f RPM", getSuggestedVelocity());
         }
         
         //--- Show all detected blocks
@@ -589,6 +670,11 @@ public class Camera
             _telemetry.addData("Camera Pitch", "%.2f", _servoPitch.getPosition());
             _telemetry.addData("Last Tag", _lastDetectedTag);
             _telemetry.addData("Blocks Detected", _blocks.length);
+            _telemetry.addData("Distance", getDistanceFormatted());
+            if (_lastDistanceInches > 0)
+            {
+                _telemetry.addData("Suggested Velocity", "%.0f RPM", getSuggestedVelocity());
+            }
         }
     }
 

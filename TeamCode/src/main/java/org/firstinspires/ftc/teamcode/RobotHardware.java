@@ -73,7 +73,7 @@ public class RobotHardware
     //------------------------------------------------------------------------------------------
     //--- OpMode
     //------------------------------------------------------------------------------------------
-    private LinearOpMode myOpMode = null;   // gain access to methods in the calling OpMode.
+    private final LinearOpMode _opMode;
 
     //------------------------------------------------------------------------------------------
     //--- Drive Motors
@@ -125,7 +125,7 @@ public class RobotHardware
     //------------------------------------------------------------------------------------------
     public RobotHardware(LinearOpMode opmode)
     {
-        myOpMode = opmode;
+        _opMode = opmode;
     }
 
     //------------------------------------------------------------------------------------------
@@ -138,10 +138,10 @@ public class RobotHardware
         //--- Motor Config
         //------------------------------------------------------------------------------------------
         //--- Drive Motors
-        motorDriveFrontLeft = myOpMode.hardwareMap.get(DcMotor.class, "fl");
-        motorDriveRearLeft = myOpMode.hardwareMap.get(DcMotor.class, "rl");
-        motorDriveFrontRight = myOpMode.hardwareMap.get(DcMotor.class, "fr");
-        motorDriveRearRight = myOpMode.hardwareMap.get(DcMotor.class, "rr");
+        motorDriveFrontLeft = _opMode.hardwareMap.get(DcMotor.class, "fl");
+        motorDriveRearLeft = _opMode.hardwareMap.get(DcMotor.class, "rl");
+        motorDriveFrontRight = _opMode.hardwareMap.get(DcMotor.class, "fr");
+        motorDriveRearRight = _opMode.hardwareMap.get(DcMotor.class, "rr");
 
         motorDriveFrontLeft.setDirection(DcMotor.Direction.REVERSE);
         motorDriveRearLeft.setDirection(DcMotor.Direction.REVERSE);
@@ -149,10 +149,10 @@ public class RobotHardware
         motorDriveRearRight.setDirection(DcMotor.Direction.FORWARD);
 
         //--- Utility Motors
-        motorIntake = myOpMode.hardwareMap.get(DcMotor.class, "in");
-        motorKickstand = myOpMode.hardwareMap.get(DcMotor.class, "kick");
-        motorFlyLeft = myOpMode.hardwareMap.get(DcMotor.class, "flyl");
-        motorFlyRight = myOpMode.hardwareMap.get(DcMotor.class, "flyr");
+        motorIntake = _opMode.hardwareMap.get(DcMotor.class, "in");
+        motorKickstand = _opMode.hardwareMap.get(DcMotor.class, "kick");
+        motorFlyLeft = _opMode.hardwareMap.get(DcMotor.class, "flyl");
+        motorFlyRight = _opMode.hardwareMap.get(DcMotor.class, "flyr");
 
         motorIntake.setDirection(DcMotor.Direction.FORWARD);
         motorIntake.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
@@ -176,30 +176,28 @@ public class RobotHardware
         //------------------------------------------------------------------------------------------
         //--- Servo Config
         //------------------------------------------------------------------------------------------
-        servoKickerLeft = myOpMode.hardwareMap.get(Servo.class, "kl");
-        servoKickerMiddle = myOpMode.hardwareMap.get(Servo.class, "km");
-        servoKickerRight = myOpMode.hardwareMap.get(Servo.class, "kr");
+        servoKickerLeft = _opMode.hardwareMap.get(Servo.class, "kl");
+        servoKickerMiddle = _opMode.hardwareMap.get(Servo.class, "km");
+        servoKickerRight = _opMode.hardwareMap.get(Servo.class, "kr");
 
-        servoCameraYaw = myOpMode.hardwareMap.get(Servo.class, "yaw");
-        servoCameraPitch = myOpMode.hardwareMap.get(Servo.class, "pitch");
+        servoCameraYaw = _opMode.hardwareMap.get(Servo.class, "yaw");
+        servoCameraPitch = _opMode.hardwareMap.get(Servo.class, "pitch");
 
-        servoLightLeft = myOpMode.hardwareMap.get(Servo.class, "ltl");
-        servoLightMiddle = myOpMode.hardwareMap.get(Servo.class, "ltm");
-        servoLightRight = myOpMode.hardwareMap.get(Servo.class, "ltr");
+        servoLightLeft = _opMode.hardwareMap.get(Servo.class, "ltl");
+        servoLightMiddle = _opMode.hardwareMap.get(Servo.class, "ltm");
+        servoLightRight = _opMode.hardwareMap.get(Servo.class, "ltr");
 
         //--- HuskyLens
-        huskyLens = myOpMode.hardwareMap.get(HuskyLens.class, "cam");
-
-        //servoKickerLeft.setDirection(Servo.Direction.REVERSE);
+        huskyLens = _opMode.hardwareMap.get(HuskyLens.class, "cam");
 
         //------------------------------------------------------------------------------------------
         //--- Hardware Constructors
         //------------------------------------------------------------------------------------------
         intake = new Intake(
                 motorIntake,
-                myOpMode.gamepad1,
-                myOpMode.gamepad2,
-                myOpMode.telemetry,
+                _opMode.gamepad1,
+                _opMode.gamepad2,
+                _opMode.telemetry,
                 robotVersion,
                 SHOW_INFO
         );
@@ -210,9 +208,9 @@ public class RobotHardware
                 motorDriveFrontRight,
                 motorDriveRearLeft,
                 motorDriveRearRight,
-                myOpMode.gamepad1,
-                myOpMode.gamepad2,
-                myOpMode.telemetry,
+                _opMode.gamepad1,
+                _opMode.gamepad2,
+                _opMode.telemetry,
                 robotVersion,
                 SHOW_INFO
         );
@@ -221,9 +219,9 @@ public class RobotHardware
                 servoLightLeft,
                 servoLightMiddle,
                 servoLightRight,
-                myOpMode.gamepad1,
-                myOpMode.gamepad2,
-                myOpMode.telemetry,
+                _opMode.gamepad1,
+                _opMode.gamepad2,
+                _opMode.telemetry,
                 robotVersion,
                 SHOW_INFO
         );
@@ -232,9 +230,9 @@ public class RobotHardware
         flywheel = new Flywheel(
                 motorFlyLeft,
                 motorFlyRight,
-                myOpMode.gamepad1,
-                myOpMode.gamepad2,
-                myOpMode.telemetry,
+                _opMode.gamepad1,
+                _opMode.gamepad2,
+                _opMode.telemetry,
                 robotVersion,
                 SHOW_INFO
         );
@@ -245,9 +243,9 @@ public class RobotHardware
                 servoKickerMiddle,
                 servoKickerRight,
                 flywheel,
-                myOpMode.gamepad1,
-                myOpMode.gamepad2,
-                myOpMode.telemetry,
+                _opMode.gamepad1,
+                _opMode.gamepad2,
+                _opMode.telemetry,
                 robotVersion,
                 SHOW_INFO
         );
@@ -260,9 +258,9 @@ public class RobotHardware
                 kickers,
                 lights,
                 drive,
-                myOpMode.gamepad1,
-                myOpMode.gamepad2,
-                myOpMode.telemetry,
+                _opMode.gamepad1,
+                _opMode.gamepad2,
+                _opMode.telemetry,
                 robotVersion,
                 SHOW_INFO
         );
@@ -274,8 +272,8 @@ public class RobotHardware
         //------------------------------------------------------------------------------------------
         //--- Messages
         //------------------------------------------------------------------------------------------
-        myOpMode.telemetry.addData(">", "Hardware Initialized");
-        myOpMode.telemetry.update();
+        _opMode.telemetry.addData(">", "Hardware Initialized");
+        _opMode.telemetry.update();
     }
 
     //------------------------------------------------------------------------------------------

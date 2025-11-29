@@ -89,7 +89,6 @@ public class Flywheel
     {
         //--- Check if we've reached target velocity
         double currentRPM = getCurrentRPM();
-        boolean wasAtTarget = _isAtTarget;
         _isAtTarget = Math.abs(currentRPM - _targetRPM) <= VELOCITY_TOLERANCE;
 
         //--- Track ramp time

@@ -116,14 +116,6 @@ public class Intake
                 _triggerWasPressed = false;
             }
         }
-
-        //--- Show telemetry if enabled
-        if (_showInfo)
-        {
-            _telemetry.addData("Intake Power", "%4.2f", _motorIntake.getPower());
-            _telemetry.addData("Intake On", _intakeOn);
-            _telemetry.addData("Outtake Active", _outtakeActive);
-        }
     }
 
     //endregion

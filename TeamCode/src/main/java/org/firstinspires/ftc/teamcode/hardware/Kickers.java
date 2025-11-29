@@ -103,6 +103,7 @@ public class Kickers
     //--- Input debouncing
     private boolean _triggerWasPressed = false;
     private boolean _bumperWasPressed = false;
+    private boolean _leftBumperWasPressed = false;
     private boolean _yPressed = false;
     private boolean _bPressed = false;
     private boolean _xPressed = false;
@@ -129,7 +130,11 @@ public class Kickers
             Servo servoKickerMiddle,
             Servo servoKickerRight,
             Flywheel flywheel,
-            Gamepad gamepad1, Gamepad gamepad2, Telemetry telemetry, int robotVersion, boolean showInfo
+            Gamepad gamepad1,
+            Gamepad gamepad2,
+            Telemetry telemetry,
+            int robotVersion,
+            boolean showInfo
     )
     {
         this._servoKickerLeft = servoKickerLeft;
@@ -316,6 +321,7 @@ public class Kickers
 
     //--- Call this in your main loop to handle gamepad controls
     //--- Gamepad1 Y/B/X/A: Set velocity presets (4000/3000/2000/1500 RPM)
+    //--- Gamepad1 Left Bumper: Auto-set velocity based on camera distance
     //--- Right Trigger: Fire all kickers at once (waits for velocity and alignment if looking at target)
     //--- Right Bumper: Fire in sequence based on ball colors (waits for velocity between shots, aligns if looking at target)
     public void controlKickers()
@@ -481,6 +487,54 @@ public class Kickers
         {
             _aPressed = false;
         }
+
+        //--- Left bumper - auto velocity from camera distance
+        if (_gamepad1.left_bumper)
+        {
+            if (!_leftBumperWasPressed)
+            {
+                _leftBumperWasPressed = true;
+                updateVelocityFromCamera();
+            }
+        }
+        else
+        {
+            _leftBumperWasPressed = false;
+        }
+    }
+
+    //--- Update target velocity based on camera distance estimation
+    private void updateVelocityFromCamera()
+    {
+        if (_camera != null)
+        {
+            double suggested = _camera.getSuggestedVelocity();
+            if (suggested > 0)
+            {
+                _targetVelocity = suggested;
+            }
+        }
+    }
+
+    //--- Set velocity based on camera distance (can be called externally)
+    public boolean setVelocityFromCamera()
+    {
+        if (_camera != null)
+        {
+            double suggested = _camera.getSuggestedVelocity();
+            if (suggested > 0)
+            {
+                _targetVelocity = suggested;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    //--- Get the current target velocity
+    public double getTargetVelocity()
+    {
+        return _targetVelocity;
     }
 
     //endregion
