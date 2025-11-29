@@ -40,6 +40,9 @@ import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesOrder;
+import org.firstinspires.ftc.robotcore.external.navigation.AxesReference;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.YawPitchRollAngles;
 import org.firstinspires.ftc.teamcode.messages.DriveCommandMessage;
 import org.firstinspires.ftc.teamcode.messages.MecanumCommandMessage;
@@ -54,16 +57,23 @@ import java.util.List;
 @Config
 public final class MecanumDrive {
     public static class Params {
-        // IMU orientation
-        // Beta robot: Control Hub facing backward, tilted down 45°, logo facing up, USB facing back
-        //   see https://ftc-docs.firstinspires.org/en/latest/programming_resources/imu/imu.html?highlight=imu#physical-hub-mounting
-        public RevHubOrientationOnRobot.LogoFacingDirection logoFacingDirection =
-                RevHubOrientationOnRobot.LogoFacingDirection.UP;
-        //TODO CHECK THESE VALUES
-                public RevHubOrientationOnRobot.UsbFacingDirection usbFacingDirection =
-                RevHubOrientationOnRobot.UsbFacingDirection.BACKWARD;
+        // IMU orientation for angled Control Hub mounting (-135 degrees)
+        // see https://ftc-docs.firstinspires.org/en/latest/programming_resources/imu/imu.html?highlight=imu#physical-hub-mounting
+        // Using Orientation constructor for non-orthogonal mounting angles
+        public IMU.Parameters imuParameters = new IMU.Parameters(
+                new RevHubOrientationOnRobot(
+                        new Orientation(
+                                AxesReference.INTRINSIC,
+                                AxesOrder.ZYX,
+                                AngleUnit.DEGREES,
+                                0,    // Z rotation
+                                0,    // Y rotation  
+                                -135, // X rotation (hub rotated -135 degrees)
+                                0     // acquisitionTime, not used
+                        )
+                )
+        );
 
-                //TODO CHECK THESE VALUES
         // drive model parameters (tuned from Alpha robot)
         public double inPerTick = 1.0 / 511.466;  // ~0.001955
         public double lateralInPerTick = 0.001377361223638381;
@@ -244,10 +254,9 @@ public final class MecanumDrive {
         leftFront.setDirection(DcMotorSimple.Direction.REVERSE);
         leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
 
-        // IMU configuration
-        //   see https://ftc-docs.firstinspires.org/en/latest/hardware_and_software_configuration/configuring/index.html
-        lazyImu = new LazyHardwareMapImu(hardwareMap, "imu", new RevHubOrientationOnRobot(
-                PARAMS.logoFacingDirection, PARAMS.usbFacingDirection));
+        // IMU configuration for angled mounting
+        // Using custom Orientation for -135 degree rotation
+        lazyImu = new LazyHardwareMapImu(hardwareMap, "imu", PARAMS.imuParameters.imuOrientationOnRobot);
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
