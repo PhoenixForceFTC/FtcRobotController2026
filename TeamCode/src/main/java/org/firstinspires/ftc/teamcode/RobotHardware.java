@@ -56,7 +56,7 @@ Servo
 5 - km (Kicker Middle)
 
 I2C
-0 - odo (Pinpoint Odometry)
+0 - pinpoint (Pinpoint Odometry)
 1 -
 2 -
 3 -
