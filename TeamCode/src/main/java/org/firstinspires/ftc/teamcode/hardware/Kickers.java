@@ -815,7 +815,8 @@ public class Kickers
         }
         else if (isAligned)
         {
-            _telemetry.addData("2. Alignment", "ALIGNED ✓");
+            String alignInfo = _camera.getAlignmentInfo();
+            _telemetry.addData("2. Alignment", "ALIGNED ✓ %s", alignInfo);
         }
         else
         {

@@ -136,6 +136,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //------------------------------------------------------------------------------------------
             //--- Camera
             //------------------------------------------------------------------------------------------
+            _robot.camera.handleAlignmentControls();  //--- Y to enable auto-align, A to disable
             //_robot.camera.fineTuneCameraPos();
 
             //------------------------------------------------------------------------------------------
