@@ -41,12 +41,13 @@ public class Camera
     private static final double HUSKY_FOCAL_LENGTH = 306.0;  // Calibrated focal length
 
     //--- Velocity suggestion based on distance (linear interpolation)
-    private static final double VELOCITY_NEAR_DISTANCE = 28.0;   // ~2.3 feet in inches
-    private static final double VELOCITY_FAR_DISTANCE = 120.0;   // 10 feet in inches
-    private static final double VELOCITY_MIN_RPM_DEFAULT = 2000.0; // Default RPM at near distance
-    private static final double VELOCITY_MAX_RPM = 4000.0;       // RPM at far distance
-    private static final double VELOCITY_FLOOR = 1500.0;         // Absolute minimum RPM allowed
-    private static final double VELOCITY_INCREMENT = 250.0;      // RPM change per button press
+    //--- Calibrated: 29" → 2767 RPM, 66" → 2979 RPM
+    private static final double VELOCITY_NEAR_DISTANCE = 29.0;   // Near calibration point (inches)
+    private static final double VELOCITY_FAR_DISTANCE = 66.0;    // Far calibration point (inches)
+    private static final double VELOCITY_MIN_RPM_DEFAULT = 2767.0; // RPM at near distance (29")
+    private static final double VELOCITY_MAX_RPM = 2979.0;       // RPM at far distance (66")
+    private static final double VELOCITY_FLOOR = 2500.0;         // Absolute minimum RPM allowed
+    private static final double VELOCITY_INCREMENT = 50.0;       // RPM change per button press (smaller for fine tuning)
 
     //--- Pitch scanning constants
     private static final double PITCH_SCAN_MIN = 0.60;   // Lowest pitch (looking DOWN toward floor)
