@@ -813,6 +813,7 @@ public class Kickers
         else if (!lookingAtTarget)
         {
             _telemetry.addData("2. Alignment", "No target visible");
+            _telemetry.addData("   Stored Dist", _camera.getStoredDistanceFormatted());
         }
         else if (_waitingForAlignment)
         {
@@ -831,6 +832,8 @@ public class Kickers
         else
         {
             _telemetry.addData("2. Alignment", "Not aligned");
+            _telemetry.addData("   Distance", "%s (stored: %s)", 
+                    _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
         }
         
         //--- Firing status
