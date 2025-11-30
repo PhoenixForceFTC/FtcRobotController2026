@@ -180,6 +180,9 @@ public class RobotHardware
         servoKickerMiddle = _opMode.hardwareMap.get(Servo.class, "km");
         servoKickerRight = _opMode.hardwareMap.get(Servo.class, "kr");
 
+        //--- Reverse kicker left direction (mounted opposite to middle/right)
+        servoKickerLeft.setDirection(Servo.Direction.REVERSE);
+
         servoCameraYaw = _opMode.hardwareMap.get(Servo.class, "yaw");
         servoCameraPitch = _opMode.hardwareMap.get(Servo.class, "pitch");
 
