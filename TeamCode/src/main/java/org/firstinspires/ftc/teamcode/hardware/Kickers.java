@@ -92,7 +92,7 @@ public class Kickers
     //--- Velocity-based firing state
     private boolean _velocityFirePending = false;
     private boolean _velocityFireAll = false;           //--- true = fire all, false = fire sequence
-    private double _targetVelocity = 0.0;
+    private double _targetVelocity = VELOCITY_PRESET_A; //--- Default to minimum preset (1500 RPM)
     private boolean _waitingForVelocity = false;        //--- Waiting for velocity before firing
     private boolean _sequenceWaitingForVelocity = false; //--- Waiting for velocity recovery during sequence
 
@@ -343,11 +343,17 @@ public class Kickers
                 _velocityFirePending = false;  //--- Cancel any pending velocity fire
                 _waitingForAlignment = false;  //--- Cancel any pending alignment
 
-                //--- Determine what we need to wait for
-                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
-                boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
+                //--- Auto-set velocity from camera distance if looking at target
+                if (lookingAtTarget && _camera != null)
+                {
+                    double suggested = _camera.getSuggestedVelocity();
+                    if (suggested > 0)
+                    {
+                        _targetVelocity = suggested;
+                    }
+                }
 
-                //--- Start velocity if needed
+                //--- Start velocity first (so isAtTarget reflects new target)
                 if (_flywheel != null && _targetVelocity > 0)
                 {
                     _flywheel.setVelocity(_targetVelocity);
@@ -358,6 +364,10 @@ public class Kickers
                 {
                     _camera.enableAutoAlignForFiring();
                 }
+
+                //--- Determine what we need to wait for (AFTER setting velocity)
+                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
+                boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
 
                 //--- Check if we can fire immediately or need to wait
                 if (!needVelocity && !needAlignment)
@@ -392,11 +402,17 @@ public class Kickers
             {
                 _bumperWasPressed = true;
 
-                //--- Determine what we need to wait for
-                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
-                boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
+                //--- Auto-set velocity from camera distance if looking at target
+                if (lookingAtTarget && _camera != null)
+                {
+                    double suggested = _camera.getSuggestedVelocity();
+                    if (suggested > 0)
+                    {
+                        _targetVelocity = suggested;
+                    }
+                }
 
-                //--- Start velocity if needed
+                //--- Start velocity first (so isAtTarget reflects new target)
                 if (_flywheel != null && _targetVelocity > 0)
                 {
                     _flywheel.setVelocity(_targetVelocity);
@@ -407,6 +423,10 @@ public class Kickers
                 {
                     _camera.enableAutoAlignForFiring();
                 }
+
+                //--- Determine what we need to wait for (AFTER setting velocity)
+                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
+                boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
 
                 //--- Check if we can fire immediately or need to wait
                 if (!needVelocity && !needAlignment)
@@ -724,8 +744,109 @@ public class Kickers
 
     //region --- Telemetry ---
 
+    //--- Track velocity spin-up time
+    private ElapsedTime _velocitySpinUpTimer = new ElapsedTime();
+    private double _lastSpinUpTime = 0.0;
+    private boolean _wasSpinningUp = false;
+
     public void getTelemetry()
     {
+        //--- Always show critical firing state (for debugging)
+        double currentRPM = (_flywheel != null) ? _flywheel.getCurrentRPM() : 0;
+        _telemetry.addData("Kicker Velocity", "%.0f / %.0f RPM", currentRPM, _targetVelocity);
+        
+        //--- Track spin-up timing
+        if (_waitingForVelocity && !_wasSpinningUp)
+        {
+            //--- Just started spinning up
+            _velocitySpinUpTimer.reset();
+            _wasSpinningUp = true;
+        }
+        else if (!_waitingForVelocity && _wasSpinningUp)
+        {
+            //--- Just finished spinning up
+            _lastSpinUpTime = _velocitySpinUpTimer.seconds();
+            _wasSpinningUp = false;
+        }
+        
+        //--- Show last spin-up time if we have one
+        if (_lastSpinUpTime > 0)
+        {
+            _telemetry.addData("Last Spin-Up", "%.2f sec", _lastSpinUpTime);
+        }
+        
+        //--- Show status of each firing prerequisite
+        boolean lookingAtTarget = (_camera != null && _camera.isLookingAtTarget());
+        boolean flywheelAtTarget = (_flywheel != null && _flywheel.isAtTarget());
+        boolean isAligned = (_camera != null && _camera.isAligned());
+        
+        //--- Velocity status
+        if (_flywheel == null)
+        {
+            _telemetry.addData("1. Velocity", "NO FLYWHEEL");
+        }
+        else if (_waitingForVelocity)
+        {
+            _telemetry.addData("1. Velocity", "SPINNING UP... %.1fs (%.0f RPM)", 
+                    _velocitySpinUpTimer.seconds(), _flywheel.getCurrentRPM());
+        }
+        else if (flywheelAtTarget)
+        {
+            _telemetry.addData("1. Velocity", "READY ✓ (%.0f RPM)", _flywheel.getCurrentRPM());
+        }
+        else
+        {
+            _telemetry.addData("1. Velocity", "Idle (%.0f RPM)", _flywheel.getCurrentRPM());
+        }
+        
+        //--- Alignment status
+        if (_camera == null)
+        {
+            _telemetry.addData("2. Alignment", "NO CAMERA");
+        }
+        else if (!lookingAtTarget)
+        {
+            _telemetry.addData("2. Alignment", "No target visible");
+        }
+        else if (_waitingForAlignment)
+        {
+            String alignInfo = _camera.getAlignmentInfo();
+            _telemetry.addData("2. Alignment", "ALIGNING... %s", alignInfo);
+        }
+        else if (isAligned)
+        {
+            _telemetry.addData("2. Alignment", "ALIGNED ✓");
+        }
+        else
+        {
+            _telemetry.addData("2. Alignment", "Not aligned");
+        }
+        
+        //--- Firing status
+        if (_sequenceFiring)
+        {
+            _telemetry.addData("3. Firing", "SEQUENCE step %d/3", _sequenceStep + 1);
+        }
+        else if (_sequenceWaitingForVelocity)
+        {
+            _telemetry.addData("3. Firing", "SEQUENCE waiting for velocity recovery");
+        }
+        else if (_velocityFirePending)
+        {
+            _telemetry.addData("3. Firing", "PENDING (waiting...)");
+        }
+        else if (_kicker1Firing || _kicker2Firing || _kicker3Firing)
+        {
+            _telemetry.addData("3. Firing", "FIRED! K1:%s K2:%s K3:%s", 
+                    _kicker1Firing ? "▲" : "▼",
+                    _kicker2Firing ? "▲" : "▼",
+                    _kicker3Firing ? "▲" : "▼");
+        }
+        else
+        {
+            _telemetry.addData("3. Firing", "Ready to fire");
+        }
+
         if (_showInfo)
         {
             _telemetry.addData("Kicker 1 (Left)", "Pos: %.2f, Ball: %s", 
@@ -735,16 +856,6 @@ public class Kickers
             _telemetry.addData("Kicker 3 (Right)", "Pos: %.2f, Ball: %s", 
                     _servoKickerRight.getPosition(), _ballColor3);
             _telemetry.addData("Sequence", _sequence);
-            _telemetry.addData("Sequence Firing", _sequenceFiring);
-            _telemetry.addData("Target Velocity", "%.0f RPM", _targetVelocity);
-            if (_waitingForVelocity)
-            {
-                _telemetry.addData("Status", "Waiting for velocity...");
-            }
-            else if (_sequenceWaitingForVelocity)
-            {
-                _telemetry.addData("Status", "Waiting for velocity recovery...");
-            }
         }
     }
 

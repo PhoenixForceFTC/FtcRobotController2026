@@ -30,8 +30,8 @@ public class Camera
     private static final int SCREEN_CENTER_Y = 120;  // 240 / 2
     private static final int ALIGN_DEADBAND = 20;    // Pixels from center to consider "aligned"
     private static final int ALIGN_SLOWZONE = 60;    // Pixels from center to start slowing down
-    private static final double ALIGN_SPEED_MIN = 0.08;  // Minimum rotation speed
-    private static final double ALIGN_SPEED_MAX = 0.25;  // Maximum rotation speed
+    private static final double ALIGN_SPEED_MIN = 0.20; // 0.08;  // Minimum rotation speed (must overcome friction)
+    private static final double ALIGN_SPEED_MAX = 0.50; // 0.25;  // Maximum rotation speed
     private static final double ALIGN_SETTLE_TIME = 0.15; // Seconds to wait after reaching deadband
 
     //--- Distance estimation constants
@@ -41,7 +41,7 @@ public class Camera
     private static final double HUSKY_FOCAL_LENGTH = 306.0;  // Calibrated focal length
 
     //--- Velocity suggestion based on distance (linear interpolation)
-    private static final double VELOCITY_NEAR_DISTANCE = 36.0;   // 3 feet in inches
+    private static final double VELOCITY_NEAR_DISTANCE = 28.0;   // ~2.3 feet in inches
     private static final double VELOCITY_FAR_DISTANCE = 120.0;   // 10 feet in inches
     private static final double VELOCITY_MIN_RPM = 1500.0;       // RPM at near distance
     private static final double VELOCITY_MAX_RPM = 4000.0;       // RPM at far distance
@@ -243,6 +243,12 @@ public class Camera
                 {
                     runPitchScan();
                 }
+            }
+            
+            //--- Run alignment if enabled (must be inside try block to access _blocks)
+            if (_alignmentLockEnabled || _autoAlignForFiring)
+            {
+                runAlignment();
             }
         }
         catch (Exception e)
@@ -581,6 +587,18 @@ public class Camera
         _lastDistanceInches = (TAG_REAL_SIZE_INCHES * HUSKY_FOCAL_LENGTH) / pixelWidth;
     }
 
+    //--- Get the minimum flywheel velocity (for close shots)
+    public double getMinVelocity()
+    {
+        return VELOCITY_MIN_RPM;
+    }
+
+    //--- Get the maximum flywheel velocity (for far shots)
+    public double getMaxVelocity()
+    {
+        return VELOCITY_MAX_RPM;
+    }
+
     //--- Get suggested flywheel velocity based on distance (returns -1 if no tag)
     //--- Uses linear interpolation between near/far distances
     public double getSuggestedVelocity()
@@ -644,16 +662,36 @@ public class Camera
         return _isAligned;
     }
 
+    //--- Get alignment info string for telemetry (shows error and direction)
+    public String getAlignmentInfo()
+    {
+        if (_blocks.length == 0)
+        {
+            return "NO BLOCKS";
+        }
+        int errorX = _blocks[0].x - SCREEN_CENTER_X;
+        int absError = Math.abs(errorX);
+        if (absError <= ALIGN_DEADBAND)
+        {
+            return _isSettling ? String.format("SETTLING (%.1fs)", _alignSettleTimer.seconds()) : "IN DEADBAND";
+        }
+        else
+        {
+            return String.format("%dpx %s", absError, errorX > 0 ? "→" : "←");
+        }
+    }
+
     //--- Check if alignment lock is enabled (manual or auto)
     public boolean isAlignmentActive()
     {
         return _alignmentLockEnabled || _autoAlignForFiring;
     }
 
-    //--- Check if we're looking at a target (blue or red)
+    //--- Check if we're looking at a target (blue or red) AND have valid block data
     public boolean isLookingAtTarget()
     {
-        return _lastDetectedTag == TAG_BLUE_TARGET || _lastDetectedTag == TAG_RED_TARGET;
+        return _blocks.length > 0 && 
+               (_lastDetectedTag == TAG_BLUE_TARGET || _lastDetectedTag == TAG_RED_TARGET);
     }
 
     //--- Run alignment logic - call this every loop when alignment is active

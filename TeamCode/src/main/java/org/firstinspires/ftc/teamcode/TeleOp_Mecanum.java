@@ -125,6 +125,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //--- Kickers
             //------------------------------------------------------------------------------------------
             _robot.kickers.controlKickers();
+            _robot.kickers.getTelemetry();
             //_robot.kickers.fineTunePositions();
 
             //------------------------------------------------------------------------------------------
@@ -135,7 +136,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //------------------------------------------------------------------------------------------
             //--- Camera
             //------------------------------------------------------------------------------------------
-            _robot.camera.fineTuneCameraPos();
+            //_robot.camera.fineTuneCameraPos();
 
             //------------------------------------------------------------------------------------------
             //--- Lights
