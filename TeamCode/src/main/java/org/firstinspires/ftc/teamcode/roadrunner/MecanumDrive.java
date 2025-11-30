@@ -65,16 +65,15 @@ public final class MecanumDrive {
         public double imuRotationY = 0;    // Y rotation in degrees
         public double imuRotationX = -135; // X rotation in degrees (hub rotated -135 degrees)
 
-        // drive model parameters (tuned from Alpha robot)
-        public double inPerTick = 1.0 / 511.466;  // ~0.001955
-        public double lateralInPerTick = 0.001377361223638381;
-        public double trackWidthTicks = 5527.603781689692;
-
-        //TODO CHECK THESE VALUES
-        // feedforward parameters (in tick units) - tuned from Alpha
-        public double kS = 1.2659182786209078;
-        public double kV = 0.0002751310031777495;
-        public double kA = 0.0001;
+        // drive model parameters
+        public double inPerTick = 0.0018650433881622; // Beta
+        public double lateralInPerTick = 0.0011335642358168499; // Beta
+        public double trackWidthTicks = 5620.60007620505; // Beta
+        
+        // feedforward parameters (in tick units)
+        public double kS = 1.2917944252047673; // Beta
+        public double kV = 0.00025870351641529154; // Beta
+        public double kA = 0.0001; // Beta (need more tuning?)
 
         // path profile parameters (in inches)
         public double maxWheelVel = 50;
@@ -258,6 +257,7 @@ public final class MecanumDrive {
                         0  // acquisitionTime, not used
                 )
         );
+
         lazyImu = new LazyHardwareMapImu(hardwareMap, "imu", imuOrientation);
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
