@@ -43,8 +43,10 @@ public class Camera
     //--- Velocity suggestion based on distance (linear interpolation)
     private static final double VELOCITY_NEAR_DISTANCE = 28.0;   // ~2.3 feet in inches
     private static final double VELOCITY_FAR_DISTANCE = 120.0;   // 10 feet in inches
-    private static final double VELOCITY_MIN_RPM = 2000.0;       // RPM at near distance
+    private static final double VELOCITY_MIN_RPM_DEFAULT = 2000.0; // Default RPM at near distance
     private static final double VELOCITY_MAX_RPM = 4000.0;       // RPM at far distance
+    private static final double VELOCITY_FLOOR = 1500.0;         // Absolute minimum RPM allowed
+    private static final double VELOCITY_INCREMENT = 250.0;      // RPM change per button press
 
     //--- Pitch scanning constants
     private static final double PITCH_SCAN_MIN = 0.60;   // Lowest pitch (looking DOWN toward floor)
@@ -113,6 +115,7 @@ public class Camera
 
     //--- Distance estimation state
     private double _lastDistanceInches = -1.0;      // Last calculated distance (-1 if no tag)
+    private double _velocityMinRPM = VELOCITY_MIN_RPM_DEFAULT;  // Adjustable min velocity
 
     //--- Scan mode state
     private ScanMode _scanMode = ScanMode.DEMO;     // Current operating mode
@@ -590,13 +593,31 @@ public class Camera
     //--- Get the minimum flywheel velocity (for close shots)
     public double getMinVelocity()
     {
-        return VELOCITY_MIN_RPM;
+        return _velocityMinRPM;
     }
 
     //--- Get the maximum flywheel velocity (for far shots)
     public double getMaxVelocity()
     {
         return VELOCITY_MAX_RPM;
+    }
+
+    //--- Increase minimum velocity by increment (clamped to max)
+    public void increaseMinVelocity()
+    {
+        _velocityMinRPM = Math.min(VELOCITY_MAX_RPM, _velocityMinRPM + VELOCITY_INCREMENT);
+    }
+
+    //--- Decrease minimum velocity by increment (clamped to floor)
+    public void decreaseMinVelocity()
+    {
+        _velocityMinRPM = Math.max(VELOCITY_FLOOR, _velocityMinRPM - VELOCITY_INCREMENT);
+    }
+
+    //--- Set minimum velocity directly (clamped to valid range)
+    public void setMinVelocity(double rpm)
+    {
+        _velocityMinRPM = Math.max(VELOCITY_FLOOR, Math.min(VELOCITY_MAX_RPM, rpm));
     }
 
     //--- Get suggested flywheel velocity based on distance (returns -1 if no tag)
@@ -612,7 +633,7 @@ public class Camera
         //--- Linear interpolation: velocity = min + (max - min) * ((distance - near) / (far - near))
         double ratio = (clampedDistance - VELOCITY_NEAR_DISTANCE) / 
                        (VELOCITY_FAR_DISTANCE - VELOCITY_NEAR_DISTANCE);
-        double suggestedVelocity = VELOCITY_MIN_RPM + (VELOCITY_MAX_RPM - VELOCITY_MIN_RPM) * ratio;
+        double suggestedVelocity = _velocityMinRPM + (VELOCITY_MAX_RPM - _velocityMinRPM) * ratio;
         
         return suggestedVelocity;
     }

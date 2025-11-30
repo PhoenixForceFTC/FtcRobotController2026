@@ -452,18 +452,38 @@ public class Kickers
     //--- Handle velocity preset buttons on gamepad1
     private void handleVelocityPresets()
     {
-        //--- Y button - 4000 RPM
+        //--- Y button - increase minimum velocity
         if (_gamepad1.y)
         {
             if (!_yPressed)
             {
                 _yPressed = true;
-                _targetVelocity = VELOCITY_PRESET_Y;
+                if (_camera != null)
+                {
+                    _camera.increaseMinVelocity();
+                }
             }
         }
         else
         {
             _yPressed = false;
+        }
+
+        //--- A button - decrease minimum velocity
+        if (_gamepad1.a)
+        {
+            if (!_aPressed)
+            {
+                _aPressed = true;
+                if (_camera != null)
+                {
+                    _camera.decreaseMinVelocity();
+                }
+            }
+        }
+        else
+        {
+            _aPressed = false;
         }
 
         //--- B button - 3000 RPM
@@ -492,20 +512,6 @@ public class Kickers
         else
         {
             _xPressed = false;
-        }
-
-        //--- A button - 1500 RPM
-        if (_gamepad1.a)
-        {
-            if (!_aPressed)
-            {
-                _aPressed = true;
-                _targetVelocity = VELOCITY_PRESET_A;
-            }
-        }
-        else
-        {
-            _aPressed = false;
         }
 
         //--- Left bumper - auto velocity from camera distance
