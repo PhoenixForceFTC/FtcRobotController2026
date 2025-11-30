@@ -57,22 +57,13 @@ import java.util.List;
 @Config
 public final class MecanumDrive {
     public static class Params {
-        // IMU orientation for angled Control Hub mounting (-135 degrees)
-        // see https://ftc-docs.firstinspires.org/en/latest/programming_resources/imu/imu.html?highlight=imu#physical-hub-mounting
-        // Using Orientation constructor for non-orthogonal mounting angles
-        public IMU.Parameters imuParameters = new IMU.Parameters(
-                new RevHubOrientationOnRobot(
-                        new Orientation(
-                                AxesReference.INTRINSIC,
-                                AxesOrder.ZYX,
-                                AngleUnit.DEGREES,
-                                0,    // Z rotation
-                                0,    // Y rotation  
-                                -135, // X rotation (hub rotated -135 degrees)
-                                0     // acquisitionTime, not used
-                        )
-                )
-        );
+        // IMU orientation - for angled Control Hub mounting
+        // Set to 0,0,0 if using standard orthogonal mounting
+        // For -135 degree rotation around X axis, set imuRotationX = -135
+        // see https://ftc-docs.firstinspires.org/en/latest/programming_resources/imu/imu.html
+        public double imuRotationZ = 0;    // Z rotation in degrees
+        public double imuRotationY = 0;    // Y rotation in degrees
+        public double imuRotationX = -135; // X rotation in degrees (hub rotated -135 degrees)
 
         // drive model parameters (tuned from Alpha robot)
         public double inPerTick = 1.0 / 511.466;  // ~0.001955
@@ -255,8 +246,19 @@ public final class MecanumDrive {
         leftBack.setDirection(DcMotorSimple.Direction.REVERSE);
 
         // IMU configuration for angled mounting
-        // Using custom Orientation for -135 degree rotation
-        lazyImu = new LazyHardwareMapImu(hardwareMap, "imu", PARAMS.imuParameters.imuOrientationOnRobot);
+        // Build RevHubOrientationOnRobot from the rotation angles in PARAMS
+        RevHubOrientationOnRobot imuOrientation = new RevHubOrientationOnRobot(
+                new Orientation(
+                        AxesReference.INTRINSIC,
+                        AxesOrder.ZYX,
+                        AngleUnit.DEGREES,
+                        (float) PARAMS.imuRotationZ,
+                        (float) PARAMS.imuRotationY,
+                        (float) PARAMS.imuRotationX,
+                        0  // acquisitionTime, not used
+                )
+        );
+        lazyImu = new LazyHardwareMapImu(hardwareMap, "imu", imuOrientation);
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
