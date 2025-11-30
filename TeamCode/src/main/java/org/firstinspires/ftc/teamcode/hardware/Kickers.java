@@ -343,8 +343,8 @@ public class Kickers
                 _velocityFirePending = false;  //--- Cancel any pending velocity fire
                 _waitingForAlignment = false;  //--- Cancel any pending alignment
 
-                //--- Auto-set velocity from camera distance if looking at target
-                if (lookingAtTarget && _camera != null)
+                //--- Always try to use stored distance for velocity (even if not currently looking at target)
+                if (_camera != null)
                 {
                     double suggested = _camera.getSuggestedVelocity();
                     if (suggested > 0)
@@ -402,8 +402,8 @@ public class Kickers
             {
                 _bumperWasPressed = true;
 
-                //--- Auto-set velocity from camera distance if looking at target
-                if (lookingAtTarget && _camera != null)
+                //--- Always try to use stored distance for velocity (even if not currently looking at target)
+                if (_camera != null)
                 {
                     double suggested = _camera.getSuggestedVelocity();
                     if (suggested > 0)
