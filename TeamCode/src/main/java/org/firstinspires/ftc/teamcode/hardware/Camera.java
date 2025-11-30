@@ -43,7 +43,7 @@ public class Camera
     //--- Velocity suggestion based on distance (linear interpolation)
     private static final double VELOCITY_NEAR_DISTANCE = 28.0;   // ~2.3 feet in inches
     private static final double VELOCITY_FAR_DISTANCE = 120.0;   // 10 feet in inches
-    private static final double VELOCITY_MIN_RPM = 3000.0;       // RPM at near distance
+    private static final double VELOCITY_MIN_RPM = 2000.0;       // RPM at near distance
     private static final double VELOCITY_MAX_RPM = 4000.0;       // RPM at far distance
 
     //--- Pitch scanning constants
