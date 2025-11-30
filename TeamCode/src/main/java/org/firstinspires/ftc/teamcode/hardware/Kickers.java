@@ -818,13 +818,15 @@ public class Kickers
         {
             String alignInfo = _camera.getAlignmentInfo();
             _telemetry.addData("2. Alignment", "ALIGNING... %s", alignInfo);
-            _telemetry.addData("   Distance", _camera.getDistanceFormatted());
+            _telemetry.addData("   Distance", "%s (stored: %s)", 
+                    _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
         }
         else if (isAligned)
         {
             String alignInfo = _camera.getAlignmentInfo();
             _telemetry.addData("2. Alignment", "ALIGNED ✓ %s", alignInfo);
-            _telemetry.addData("   Distance", _camera.getDistanceFormatted());
+            _telemetry.addData("   Distance", "%s (stored: %s)", 
+                    _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
         }
         else
         {

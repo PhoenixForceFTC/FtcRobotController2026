@@ -114,7 +114,8 @@ public class Camera
     private boolean _isSettling = false;            // Currently in settling period
 
     //--- Distance estimation state
-    private double _lastDistanceInches = -1.0;      // Last calculated distance (-1 if no tag)
+    private double _lastDistanceInches = -1.0;      // Current distance (-1 if no tag visible)
+    private double _storedDistanceInches = -1.0;    // Last good distance (persists when tag lost)
     private double _velocityMinRPM = VELOCITY_MIN_RPM_DEFAULT;  // Adjustable min velocity
 
     //--- Scan mode state
@@ -588,6 +589,24 @@ public class Camera
 
         //--- Calculate distance using similar triangles
         _lastDistanceInches = (TAG_REAL_SIZE_INCHES * HUSKY_FOCAL_LENGTH) / pixelWidth;
+        
+        //--- Store this as the last good distance (persists when tag is lost)
+        _storedDistanceInches = _lastDistanceInches;
+    }
+
+    //--- Get the stored distance (last good reading, persists when tag lost)
+    public double getStoredDistanceInches()
+    {
+        return _storedDistanceInches;
+    }
+
+    //--- Get stored distance formatted as inches string
+    public String getStoredDistanceFormatted()
+    {
+        if (_storedDistanceInches < 0) return "No reading";
+        
+        int inches = (int) Math.round(_storedDistanceInches);
+        return String.format("%d in", inches);
     }
 
     //--- Get the minimum flywheel velocity (for close shots)
@@ -620,15 +639,17 @@ public class Camera
         _velocityMinRPM = Math.max(VELOCITY_FLOOR, Math.min(VELOCITY_MAX_RPM, rpm));
     }
 
-    //--- Get suggested flywheel velocity based on distance (returns -1 if no tag)
+    //--- Get suggested flywheel velocity based on stored distance (returns -1 if no reading)
+    //--- Uses stored distance so velocity is stable even if tag is momentarily lost
     //--- Uses linear interpolation between near/far distances
     public double getSuggestedVelocity()
     {
-        if (_lastDistanceInches < 0) return -1.0;
+        //--- Use stored distance (persists when tag lost)
+        if (_storedDistanceInches < 0) return -1.0;
         
         //--- Clamp distance to valid range
         double clampedDistance = Math.max(VELOCITY_NEAR_DISTANCE, 
-                                          Math.min(VELOCITY_FAR_DISTANCE, _lastDistanceInches));
+                                          Math.min(VELOCITY_FAR_DISTANCE, _storedDistanceInches));
         
         //--- Linear interpolation: velocity = min + (max - min) * ((distance - near) / (far - near))
         double ratio = (clampedDistance - VELOCITY_NEAR_DISTANCE) / 
