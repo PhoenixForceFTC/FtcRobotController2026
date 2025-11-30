@@ -47,10 +47,13 @@ public class Camera
     private static final double VELOCITY_MAX_RPM = 4000.0;       // RPM at far distance
 
     //--- Pitch scanning constants
-    private static final double PITCH_SCAN_MIN = 0.50;   // Lowest pitch (looking DOWN toward floor)
+    private static final double PITCH_SCAN_MIN = 0.60;   // Lowest pitch (looking DOWN toward floor)
     private static final double PITCH_SCAN_MAX = 0.75;   // Highest pitch (looking UP toward ceiling)
     private static final double PITCH_SCAN_STEP = 0.01;  // Step size for scanning (smaller = smoother)
     private static final double PITCH_DEADBAND = 30;     // Pixels from Y center to consider "centered"
+
+    //--- Light hold time (debounce) - lights stay on this long after losing tracking
+    private static final double LIGHT_HOLD_TIME = 0.5;   // Seconds to hold lights after losing tag
 
     //--- Pre-match camera position (fixed, no scanning)
     private static final double PREMATCH_YAW = 0.5;      // Yaw for pre-match (adjust as needed)
@@ -118,6 +121,10 @@ public class Camera
     private double _currentScanPitch = PITCH_CENTER; // Current pitch during scan
     private ElapsedTime _scanTimer = new ElapsedTime(); // Timer for scan steps
     private static final double SCAN_STEP_TIME = 0.15;  // Time between scan steps (seconds)
+
+    //--- Light hold timer (debounce to prevent flickering)
+    private ElapsedTime _lightHoldTimer = new ElapsedTime();
+    private boolean _lightHoldActive = false;       // True when we just lost a tag and are holding lights
     //endregion
 
     //region --- Constructor ---
@@ -186,6 +193,9 @@ public class Camera
             {
                 //--- Stop scanning - we found a valid tag
                 _isScanning = false;
+                
+                //--- Cancel any light hold timer since we're tracking again
+                _lightHoldActive = false;
 
                 int detectedId = targetBlock.id;
                 _lastDetectedTag = detectedId;
@@ -205,11 +215,28 @@ public class Camera
                 //--- No valid tags detected - start scanning
                 if (_lastDetectedTag != -1)
                 {
-                    //--- Just lost sight of tag, turn off lights
-                    _lights.setAllOff();
+                    //--- Just lost sight of tag, start hold timer instead of turning off immediately
+                    if (!_lightHoldActive)
+                    {
+                        _lightHoldActive = true;
+                        _lightHoldTimer.reset();
+                    }
                 }
-                _lastDetectedTag = -1;
-                _lastProcessedTag = -1;
+                
+                //--- Check if hold time has expired
+                if (_lightHoldActive && _lightHoldTimer.seconds() >= LIGHT_HOLD_TIME)
+                {
+                    //--- Hold time expired, now turn off lights
+                    _lights.setAllOff();
+                    _lightHoldActive = false;
+                    _lastDetectedTag = -1;
+                    _lastProcessedTag = -1;
+                }
+                else if (!_lightHoldActive && _lastDetectedTag == -1)
+                {
+                    //--- No tag and no hold active, clear state
+                    _lastProcessedTag = -1;
+                }
 
                 //--- Scan for tags (only in TELEOP and DEMO modes)
                 if (_scanMode != ScanMode.PRE_MATCH)
