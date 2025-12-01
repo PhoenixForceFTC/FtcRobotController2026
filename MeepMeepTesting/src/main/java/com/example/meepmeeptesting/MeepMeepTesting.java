@@ -19,72 +19,21 @@ public class MeepMeepTesting {
                 .setConstraints(50, 50, Math.toRadians(180), Math.toRadians(180), 10.80737288830478)
                 .build();
 
-        /*myBot.runAction(myBot.getDrive().actionBuilder(new Pose2d(-72, -24, 0))
-                .lineToX(30)
-                .turn(Math.toRadians(90))
-                .lineToY(30)
-                .turn(Math.toRadians(90))
-                .lineToX(0)
-                .turn(Math.toRadians(90))
-                .lineToY(0)
-                .turn(Math.toRadians(90))
-                .build());*/
-
-        /*myBot.runAction(myBot.getDrive().actionBuilder(new Pose2d(60, -24, Math.PI))
-
-                // move to shooting area
-
-                .splineTo(new Vector2d(-12, -12), -(3*Math.PI)/4)
-
-
+        myBot.runAction(myBot.getDrive().actionBuilder(new Pose2d(-48, -42, Math.toRadians(231)))
+                .waitSeconds(2)
+                .strafeToSplineHeading(new Vector2d(-12, -12), Math.toRadians(225))
                 .waitSeconds(2)
 
-                // moves to first spike to intake artifacts, then moves back
-                .splineTo(new Vector2d(-12, -48), -(Math.PI) / 4)
-                .splineTo(new Vector2d(-12, -12), -(3*Math.PI)/4)
-
+                .strafeToSplineHeading(new Vector2d(-12, -30), Math.toRadians(270))
+                .strafeToSplineHeading(new Vector2d(-12, -48), Math.toRadians(270))
+                .strafeToSplineHeading(new Vector2d(-12, -12), Math.toRadians(225))
                 .waitSeconds(2)
 
-                // moves to second spike to intake artifacts, then moves back
-                .splineTo(new Vector2d(12, -48), -(Math.PI)/4)
-                .splineTo(new Vector2d(-12, -12), -(3*Math.PI)/4)
-
-                // kicks artifacts from second spike
-
-                .build());*/
-
-        myBot.runAction(myBot.getDrive().actionBuilder(new Pose2d(-39.5, -59.5, Math.PI/2))
-                // move to shooting area
-                .strafeToSplineHeading(new Vector2d(-12, -12), -(3*Math.PI)/4)
-
-                // shoots the preloaded artifacts
+                .strafeToSplineHeading(new Vector2d(0, -34), Math.toRadians(270))
+                .strafeToSplineHeading(new Vector2d(12, -48), Math.toRadians(270))
                 .waitSeconds(2)
-
-                // moves to third spike to intake artifacts, then moves back
-                //.strafeToSplineHeading(new Vector2d(0, -36), -(3*Math.PI)/4)
-                .turn((Math.PI)/4)
-
-                .strafeToSplineHeading(new Vector2d(-6, -36), -(Math.PI)/2)
-                .strafeToSplineHeading(new Vector2d(-18, -42), -(Math.PI)/2)
-                .strafeToSplineHeading(new Vector2d(-12, -12), -(3*Math.PI)/4)
-
-                // kicks artifacts from third spike
-
-                // moves to second spike to intake artifacts, then moves back
-                .strafeToSplineHeading(new Vector2d(12, -48), -(Math.PI)/4)
-                .strafeToSplineHeading(new Vector2d(-7, -7), -(3*Math.PI)/4)
-
+                .strafeToSplineHeading(new Vector2d(-12, -12), Math.toRadians(225))
                 .waitSeconds(2)
-
-                .strafeToSplineHeading(new Vector2d(0, -24), -(3*Math.PI)/4)
-                .strafeToSplineHeading(new Vector2d(-12, -48), -(3*Math.PI)/4)
-                .strafeToSplineHeading(new Vector2d(-7, -7), -(3*Math.PI)/4)
-
-                //.strafeToSplineHeading(new Vector2d(36, -48), 0)
-                //.strafeToSplineHeading(new Vector2d(-24, -24), -(3*Math.PI)/4)
-
-                // kicks artifacts from second spike
-
 
                 .build());
 

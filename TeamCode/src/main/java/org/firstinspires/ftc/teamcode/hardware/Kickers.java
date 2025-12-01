@@ -92,7 +92,7 @@ public class Kickers
     //--- Velocity-based firing state
     private boolean _velocityFirePending = false;
     private boolean _velocityFireAll = false;           //--- true = fire all, false = fire sequence
-    private double _targetVelocity = VELOCITY_PRESET_A; //--- Default to minimum preset (1500 RPM)
+    private double _targetVelocity = 2800.0;            //--- Default to calibrated mid-range (~29-66" range)
     private boolean _waitingForVelocity = false;        //--- Waiting for velocity before firing
     private boolean _sequenceWaitingForVelocity = false; //--- Waiting for velocity recovery during sequence
 
@@ -343,15 +343,7 @@ public class Kickers
                 _velocityFirePending = false;  //--- Cancel any pending velocity fire
                 _waitingForAlignment = false;  //--- Cancel any pending alignment
 
-                //--- Always try to use stored distance for velocity (even if not currently looking at target)
-                if (_camera != null)
-                {
-                    double suggested = _camera.getSuggestedVelocity();
-                    if (suggested > 0)
-                    {
-                        _targetVelocity = suggested;
-                    }
-                }
+                //--- Always use manual _targetVelocity (adjusted with Y/A buttons)
 
                 //--- Start velocity first (so isAtTarget reflects new target)
                 if (_flywheel != null && _targetVelocity > 0)
@@ -402,15 +394,7 @@ public class Kickers
             {
                 _bumperWasPressed = true;
 
-                //--- Always try to use stored distance for velocity (even if not currently looking at target)
-                if (_camera != null)
-                {
-                    double suggested = _camera.getSuggestedVelocity();
-                    if (suggested > 0)
-                    {
-                        _targetVelocity = suggested;
-                    }
-                }
+                //--- Always use manual _targetVelocity (adjusted with Y/A buttons)
 
                 //--- Start velocity first (so isAtTarget reflects new target)
                 if (_flywheel != null && _targetVelocity > 0)
@@ -449,19 +433,21 @@ public class Kickers
         }
     }
 
+    //--- Velocity adjustment increment (RPM per button press)
+    private static final double VELOCITY_ADJUST_INCREMENT = 50.0;
+    private static final double VELOCITY_ADJUST_MIN = 2500.0;  // Absolute floor
+    private static final double VELOCITY_ADJUST_MAX = 4000.0;  // Absolute ceiling
+
     //--- Handle velocity preset buttons on gamepad1
     private void handleVelocityPresets()
     {
-        //--- Y button - increase minimum velocity
+        //--- Y button - increase target velocity
         if (_gamepad1.y)
         {
             if (!_yPressed)
             {
                 _yPressed = true;
-                if (_camera != null)
-                {
-                    _camera.increaseMinVelocity();
-                }
+                _targetVelocity = Math.min(VELOCITY_ADJUST_MAX, _targetVelocity + VELOCITY_ADJUST_INCREMENT);
             }
         }
         else
@@ -469,16 +455,13 @@ public class Kickers
             _yPressed = false;
         }
 
-        //--- A button - decrease minimum velocity
+        //--- A button - decrease target velocity
         if (_gamepad1.a)
         {
             if (!_aPressed)
             {
                 _aPressed = true;
-                if (_camera != null)
-                {
-                    _camera.decreaseMinVelocity();
-                }
+                _targetVelocity = Math.max(VELOCITY_ADJUST_MIN, _targetVelocity - VELOCITY_ADJUST_INCREMENT);
             }
         }
         else
@@ -757,9 +740,10 @@ public class Kickers
 
     public void getTelemetry()
     {
-        //--- Always show critical firing state (for debugging)
+        //--- Always show target velocity prominently at top (Y/A to adjust)
         double currentRPM = (_flywheel != null) ? _flywheel.getCurrentRPM() : 0;
-        _telemetry.addData("Kicker Velocity", "%.0f / %.0f RPM", currentRPM, _targetVelocity);
+        _telemetry.addData(">>> TARGET VELOCITY", "%.0f RPM (Y+/A-)", _targetVelocity);
+        _telemetry.addData("    Current RPM", "%.0f", currentRPM);
         
         //--- Track spin-up timing
         if (_waitingForVelocity && !_wasSpinningUp)
