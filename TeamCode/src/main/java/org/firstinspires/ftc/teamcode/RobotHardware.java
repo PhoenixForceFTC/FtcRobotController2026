@@ -215,7 +215,8 @@ public class RobotHardware
                 _opMode.gamepad2,
                 _opMode.telemetry,
                 robotVersion,
-                SHOW_INFO
+                false
+                //SHOW_INFO
         );
 
         lights = new Lights(

@@ -659,6 +659,12 @@ public class Kickers
         _camera = camera;
     }
 
+    //--- Set the target velocity directly (called from Camera in Manual Target mode)
+    public void setTargetVelocity(double velocity)
+    {
+        _targetVelocity = Math.max(VELOCITY_ADJUST_MIN, Math.min(VELOCITY_ADJUST_MAX, velocity));
+    }
+
     //--- Check if sequence firing is complete
     public boolean isSequenceComplete()
     {
@@ -740,10 +746,17 @@ public class Kickers
 
     public void getTelemetry()
     {
-        //--- Always show target velocity prominently at top (Y/A to adjust)
+        //--- Show Mode at the very top (from Camera)
+        if (_camera != null)
+        {
+            _telemetry.addData("MODE", _camera.getTargetingModeString());
+        }
+
+        _telemetry.addData("SEQUENCE", _sequence);
+
+        //--- Show target velocity
         double currentRPM = (_flywheel != null) ? _flywheel.getCurrentRPM() : 0;
-        _telemetry.addData(">>> TARGET VELOCITY", "%.0f RPM (Y+/A-)", _targetVelocity);
-        _telemetry.addData("    Current RPM", "%.0f", currentRPM);
+        _telemetry.addData("TARGET", "%.0f RPM → Current: %.0f", _targetVelocity, currentRPM);
         
         //--- Track spin-up timing
         if (_waitingForVelocity && !_wasSpinningUp)
@@ -773,76 +786,67 @@ public class Kickers
         //--- Velocity status
         if (_flywheel == null)
         {
-            _telemetry.addData("1. Velocity", "NO FLYWHEEL");
+            _telemetry.addData("VELOCITY", "None");
         }
         else if (_waitingForVelocity)
         {
-            _telemetry.addData("1. Velocity", "SPINNING UP... %.1fs (%.0f RPM)", 
+            _telemetry.addData("VELOCITY", "Spinning Up... %.1fs (%.0f RPM)", 
                     _velocitySpinUpTimer.seconds(), _flywheel.getCurrentRPM());
         }
         else if (flywheelAtTarget)
         {
-            _telemetry.addData("1. Velocity", "READY ✓ (%.0f RPM)", _flywheel.getCurrentRPM());
+            _telemetry.addData("VELOCITY", "Ready ✓ (%.0f RPM)", _flywheel.getCurrentRPM());
         }
         else
         {
-            _telemetry.addData("1. Velocity", "Idle (%.0f RPM)", _flywheel.getCurrentRPM());
+            _telemetry.addData("VELOCITY", "Idle (%.0f RPM)", _flywheel.getCurrentRPM());
         }
         
         //--- Alignment status
         if (_camera == null)
         {
-            _telemetry.addData("2. Alignment", "NO CAMERA");
+            _telemetry.addData("ALIGNMENT", "No Camera");
         }
         else if (!lookingAtTarget)
         {
-            _telemetry.addData("2. Alignment", "No target visible");
-            _telemetry.addData("   Stored Dist", _camera.getStoredDistanceFormatted());
+            _telemetry.addData("ALIGNMENT", "Not Visible (Last: %s)", _camera.getStoredDistanceFormatted());
         }
         else if (_waitingForAlignment)
         {
-            String alignInfo = _camera.getAlignmentInfo();
-            _telemetry.addData("2. Alignment", "ALIGNING... %s", alignInfo);
-            _telemetry.addData("   Distance", "%s (stored: %s)", 
-                    _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
+            _telemetry.addData("ALIGNMENT", "Aligning... %s (Dist: %s / Last: %s)", _camera.getAlignmentInfo(), _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
         }
         else if (isAligned)
         {
-            String alignInfo = _camera.getAlignmentInfo();
-            _telemetry.addData("2. Alignment", "ALIGNED ✓ %s", alignInfo);
-            _telemetry.addData("   Distance", "%s (stored: %s)", 
-                    _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
+            _telemetry.addData("ALIGNMENT", "Aligned ✓ %s (Dist: %s / Last: %s)", _camera.getAlignmentInfo(), _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
         }
         else
         {
-            _telemetry.addData("2. Alignment", "Not aligned");
-            _telemetry.addData("   Distance", "%s (stored: %s)", 
-                    _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
+            _telemetry.addData("ALIGNMENT", "NOT Aligned %s (Dist: %s / Last: %s)", _camera.getAlignmentInfo(), _camera.getDistanceFormatted(), _camera.getStoredDistanceFormatted());
         }
         
         //--- Firing status
         if (_sequenceFiring)
         {
-            _telemetry.addData("3. Firing", "SEQUENCE step %d/3", _sequenceStep + 1);
+            _telemetry.addData("FIRING", "SEQUENCE - Step %d/3", _sequenceStep + 1);
         }
         else if (_sequenceWaitingForVelocity)
         {
-            _telemetry.addData("3. Firing", "SEQUENCE waiting for velocity recovery");
+            _telemetry.addData("FIRING", "SEQUENCE - Waiting for Velocity Recovery");
         }
         else if (_velocityFirePending)
         {
-            _telemetry.addData("3. Firing", "PENDING (waiting...)");
+            _telemetry.addData("FIRING", "PENDING (Waiting...)");
         }
         else if (_kicker1Firing || _kicker2Firing || _kicker3Firing)
         {
-            _telemetry.addData("3. Firing", "FIRED! K1:%s K2:%s K3:%s", 
+            _telemetry.addData("FIRING", "FIRED! K1:%s K2:%s K3:%s", 
                     _kicker1Firing ? "▲" : "▼",
                     _kicker2Firing ? "▲" : "▼",
                     _kicker3Firing ? "▲" : "▼");
         }
         else
         {
-            _telemetry.addData("3. Firing", "Ready to fire");
+            _telemetry.addData("FIRING", "Ready to Fire");
         }
 
         if (_showInfo)
@@ -853,7 +857,6 @@ public class Kickers
                     _servoKickerMiddle.getPosition(), _ballColor2);
             _telemetry.addData("Kicker 3 (Right)", "Pos: %.2f, Ball: %s", 
                     _servoKickerRight.getPosition(), _ballColor3);
-            _telemetry.addData("Sequence", _sequence);
         }
     }
 

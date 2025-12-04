@@ -49,6 +49,11 @@ public class Camera
     private static final double VELOCITY_FLOOR = 2500.0;         // Absolute minimum RPM allowed
     private static final double VELOCITY_INCREMENT = 50.0;       // RPM change per button press (smaller for fine tuning)
 
+    //--- Manual Target mode velocity presets (RPM)
+    private static final double VELOCITY_CLOSE = 2700.0;   // Y button - close shot
+    private static final double VELOCITY_MEDIUM = 2850.0;  // B button - medium shot
+    private static final double VELOCITY_LONG = 3000.0;    // A button - long shot
+
     //--- Pitch scanning constants
     private static final double PITCH_SCAN_MIN = 0.60;   // Lowest pitch (looking DOWN toward floor)
     private static final double PITCH_SCAN_MAX = 0.75;   // Highest pitch (looking UP toward ceiling)
@@ -75,6 +80,13 @@ public class Camera
         TELEOP,     // Goals only (ignore obelisk/sequence tags)
         DEMO        // Any tag triggers (for testing/demo)
     }
+
+    //--- Targeting mode for gp2 controls
+    public enum TargetingMode
+    {
+        AUTO_AIM,       // Camera auto-align: Y=lock on, A=release
+        MANUAL_TARGET   // Manual velocity presets: Y=Close, B=Medium, A=Long
+    }
     //endregion
 
     //region --- Hardware ---
@@ -96,6 +108,12 @@ public class Camera
     private int _lastDetectedTag = -1;
     private HuskyLens.Block[] _blocks = new HuskyLens.Block[0];
     private HuskyLens.Algorithm _currentAlgorithm = HuskyLens.Algorithm.TAG_RECOGNITION;
+
+    //--- Targeting mode state (gp2 dpad up/down to switch)
+    private TargetingMode _targetingMode = TargetingMode.AUTO_AIM;  // Default to auto-aim
+    private boolean _dpadUpPressed = false;     // Debounce dpad up
+    private boolean _dpadDownPressed = false;   // Debounce dpad down
+    private boolean _bButtonPressed = false;    // Debounce B button
 
     //--- Fine tune state
     private double _tuneYaw = YAW_CENTER;
@@ -809,8 +827,62 @@ public class Camera
         }
     }
 
-    //--- Handle alignment controls (Y to enable, A to disable)
-    public void handleAlignmentControls()
+    //--- Handle targeting controls based on current mode
+    //--- gp2 Dpad Up: Switch to AUTO_AIM mode
+    //--- gp2 Dpad Down: Switch to MANUAL_TARGET mode
+    //--- AUTO_AIM mode: Y=lock on target, A=release lock
+    //--- MANUAL_TARGET mode: Y=Close shot, B=Medium shot, A=Long shot
+    public void handleTargetingControls()
+    {
+        //--- Dpad Up - switch to AUTO_AIM mode
+        if (_gamepad2.dpad_up)
+        {
+            if (!_dpadUpPressed)
+            {
+                _dpadUpPressed = true;
+                _targetingMode = TargetingMode.AUTO_AIM;
+            }
+        }
+        else
+        {
+            _dpadUpPressed = false;
+        }
+
+        //--- Dpad Down - switch to MANUAL_TARGET mode
+        if (_gamepad2.dpad_down)
+        {
+            if (!_dpadDownPressed)
+            {
+                _dpadDownPressed = true;
+                _targetingMode = TargetingMode.MANUAL_TARGET;
+                //--- Also disable alignment when switching to manual
+                disableAlignmentLock();
+            }
+        }
+        else
+        {
+            _dpadDownPressed = false;
+        }
+
+        //--- Handle Y/B/A buttons based on current mode
+        if (_targetingMode == TargetingMode.AUTO_AIM)
+        {
+            handleAutoAimControls();
+        }
+        else
+        {
+            handleManualTargetControls();
+        }
+
+        //--- Run alignment if enabled (in either mode, alignment can be active)
+        if (_alignmentLockEnabled || _autoAlignForFiring)
+        {
+            runAlignment();
+        }
+    }
+
+    //--- AUTO_AIM mode controls: Y=lock on, A=release
+    private void handleAutoAimControls()
     {
         //--- Y button - enable alignment lock
         if (_gamepad2.y)
@@ -839,11 +911,85 @@ public class Camera
         {
             _aButtonPressed = false;
         }
+    }
 
-        //--- Run alignment if enabled
-        if (_alignmentLockEnabled || _autoAlignForFiring)
+    //--- MANUAL_TARGET mode controls: Y=Close, B=Medium, A=Long
+    private void handleManualTargetControls()
+    {
+        //--- Y button - Close shot velocity
+        if (_gamepad2.y)
         {
-            runAlignment();
+            if (!_yButtonPressed)
+            {
+                _yButtonPressed = true;
+                if (_kickers != null)
+                {
+                    _kickers.setTargetVelocity(VELOCITY_CLOSE);
+                }
+            }
+        }
+        else
+        {
+            _yButtonPressed = false;
+        }
+
+        //--- B button - Medium shot velocity
+        if (_gamepad2.b)
+        {
+            if (!_bButtonPressed)
+            {
+                _bButtonPressed = true;
+                if (_kickers != null)
+                {
+                    _kickers.setTargetVelocity(VELOCITY_MEDIUM);
+                }
+            }
+        }
+        else
+        {
+            _bButtonPressed = false;
+        }
+
+        //--- A button - Long shot velocity
+        if (_gamepad2.a)
+        {
+            if (!_aButtonPressed)
+            {
+                _aButtonPressed = true;
+                if (_kickers != null)
+                {
+                    _kickers.setTargetVelocity(VELOCITY_LONG);
+                }
+            }
+        }
+        else
+        {
+            _aButtonPressed = false;
+        }
+    }
+
+    //--- Legacy method - calls handleTargetingControls for backward compatibility
+    public void handleAlignmentControls()
+    {
+        handleTargetingControls();
+    }
+
+    //--- Get the current targeting mode
+    public TargetingMode getTargetingMode()
+    {
+        return _targetingMode;
+    }
+
+    //--- Get targeting mode as display string
+    public String getTargetingModeString()
+    {
+        if (_targetingMode == TargetingMode.AUTO_AIM)
+        {
+            return "AUTO-AIM (Y=Lock, A=Release)";
+        }
+        else
+        {
+            return "MANUAL (Y=Close, B=Med, A=Long)";
         }
     }
 

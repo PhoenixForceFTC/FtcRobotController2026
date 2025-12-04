@@ -11,7 +11,7 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 
 //region --- Controls ---
 //----------------------------------------------------------------------
-// Joystick 1 -----------------------------------------------------------
+// Joystick 1 (gp1) -----------------------------------------------------
 //  - Left Stick        - Mecanum Drive
 //  - Right Stick       - Mecanum Rotate
 //  - Left Stick Click  - Drive Speed High/Low (Hold 1 second)
@@ -27,32 +27,36 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //  - Left Trigger      - Intake Toggle On/Off
 //  - Left Bumpers      - Intake Outtakes for timed duration
 //
-//  - Y (▲)             - Set Flywheel Velocity 4000 RPM
-//  - A (✕)             - Set Flywheel Velocity 1500 RPM
+//  - Y (▲)             - Increase Target Velocity (+50 RPM)
+//  - A (✕)             - Decrease Target Velocity (-50 RPM)
 //  - X (■)             - Set Flywheel Velocity 2000 RPM
 //  - B (○)             - Set Flywheel Velocity 3000 RPM
 //
 //----------------------------------------------------------------------
-// Joystick 2 -----------------------------------------------------------
+// Joystick 2 (gp2) -----------------------------------------------------
 //  - Left Stick        -
 //  - Right Stick       -
-//  - Left Stick Click  - ??Reset Intake Encoder
-//  - Right Stick Click - ??Reset Lift Encoder
+//  - Left Stick Click  - 
+//  - Right Stick Click - 
 //
-//  - Dpad Up           - Camera Pitch Up / Flywheel +100 RPM
-//  - Dpad Down         - Camera Pitch Down / Flywheel -100 RPM
-//  - Dpad Right        - Camera Yaw Right
-//  - Dpad Left         - Camera Yaw Left
+//  - Dpad Up           - Switch to AUTO-AIM mode
+//  - Dpad Down         - Switch to MANUAL TARGET mode
+//  - Dpad Right        - 
+//  - Dpad Left         - 
 //
 //  - Right Trigger     -
 //  - Right Bumpers     -
 //  - Left Trigger      -
 //  - Left Bumpers      -
-
-//  - Y (▲)             - Camera Pitch Up / Flywheel 4000 RPM
-//  - A (✕)             - Camera Pitch Down / Flywheel Stop
-//  - X (■)             - Camera Yaw Left / Flywheel 2000 RPM
-//  - B (○)             - Camera Yaw Right / Flywheel 3000 RPM
+//
+//  AUTO-AIM MODE (Dpad Up):
+//  - Y (▲)             - Lock on to target (auto-align)
+//  - A (✕)             - Release lock (stop auto-align)
+//
+//  MANUAL TARGET MODE (Dpad Down):
+//  - Y (▲)             - Close shot velocity (2700 RPM)
+//  - B (○)             - Medium shot velocity (2850 RPM)
+//  - A (✕)             - Long shot velocity (3000 RPM)
 //----------------------------------------------------------------------
 //endregion
 
@@ -80,7 +84,7 @@ public class TeleOp_Mecanum extends LinearOpMode
         //------------------------------------------------------------------------------------------
         //--- Display and wait for the game to start (driver presses START)
         //------------------------------------------------------------------------------------------
-        telemetry.addData("Status", "Initialized");
+        telemetry.addData("STATUS", "Initialized");
         telemetry.update();
         waitForStart();
         _runtime.reset();
@@ -109,7 +113,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //------------------------------------------------------------------------------------------
             //--- Start Telemetry Display
             //------------------------------------------------------------------------------------------
-            telemetry.addData("Status", "Run Time: " + _runtime.toString());
+            telemetry.addData("STATUS", "Run Time: " + _runtime.toString());
 
             //------------------------------------------------------------------------------------------
             //--- Drive
@@ -134,9 +138,9 @@ public class TeleOp_Mecanum extends LinearOpMode
             //_robot.flywheel.testVelocities();
 
             //------------------------------------------------------------------------------------------
-            //--- Camera
+            //--- Camera / Targeting Controls
             //------------------------------------------------------------------------------------------
-            _robot.camera.handleAlignmentControls();  //--- Y to enable auto-align, A to disable
+            _robot.camera.handleTargetingControls();  //--- gp2: Dpad Up/Down=mode, Y/B/A=actions
             //_robot.camera.fineTuneCameraPos();
 
             //------------------------------------------------------------------------------------------
