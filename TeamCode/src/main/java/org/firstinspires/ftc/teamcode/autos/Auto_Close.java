@@ -68,7 +68,7 @@ public class Auto_Close extends LinearOpMode {
         if (isStopRequested()) return;
 
         //========================================================================
-        //--- PHASE 1: Shoot preloaded balls (1-3)
+        //--- Stack 1, shoot (1-3)
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(startPose)
@@ -78,12 +78,12 @@ public class Auto_Close extends LinearOpMode {
                 //--- Align to shoot
                 .strafeToSplineHeading(pos(-33.5, -36.5), degreeHeading(227))
                 //--- Wait for flywheel to get up to speed, then fire all
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Phase 1 (Preload)", fireLog))
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Preloads", fireLog))
                 .build()
         );
 
         //========================================================================
-        //--- PHASE 2: Pick up balls from stack 1, shoot (4-6)
+        //--- Stack 2, shoot (4-6)
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(pose(-36, -36, 235))
@@ -91,104 +91,82 @@ public class Auto_Close extends LinearOpMode {
                 .strafeToSplineHeading(pos(-32, -50), degreeHeading(10))
                 //--- Turn on intake
                 .stopAndAdd(new AutoActions.IntakeOn(robot))
-                //--- Drive forward to pick up balls (stack 1) at half speed
+                //--- Drive forward to pick up balls at half speed
                 .strafeToSplineHeading(pos(-16, -50), degreeHeading(0), slow(), slowAccel())
-                //.waitSeconds(1)
                 //--- Reverse intake while moving to shoot position
-                .stopAndAdd(new AutoActions.IntakeReverse(robot))
+                //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                 //--- Align to shoot
-                //.strafeToSplineHeading(pos(-33.5, -36.5), degreeHeading(227))
                 .strafeToSplineHeading(pos(-36, -36), degreeHeading(220))
                 //--- Stop intake
                 .stopAndAdd(new AutoActions.IntakeStop(robot))
                 //--- Wait for flywheel to get up to speed, then fire all
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Phase 2 (Stack 1)", fireLog))
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Stack 1", fireLog))
                 .build()
         );
 
         //========================================================================
-        //--- PHASE 3: Open stack 2, pick up, shoot (7-9)
+        //--- Stack 3, shoot (7-9)
+        //========================================================================
+        Actions.runBlocking(
+            drive.actionBuilder(pose(-36, -36, 235))
+                //--- Align with balls
+                .strafeToSplineHeading(pos(-9, -50), degreeHeading(10))
+                //--- Turn on intake
+                .stopAndAdd(new AutoActions.IntakeOn(robot))
+                //--- Drive forward to pick up balls at half speed
+                .strafeToSplineHeading(pos(7, -50), degreeHeading(0), slow(), slowAccel())
+                //--- Reverse intake while moving to shoot position
+                //.stopAndAdd(new AutoActions.IntakeReverse(robot))
+                //--- Align to shoot
+                .strafeToSplineHeading(pos(-36, -36), degreeHeading(224))
+                //--- Stop intake
+                .stopAndAdd(new AutoActions.IntakeStop(robot))
+                //--- Wait for flywheel to get up to speed, then fire all
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Stack 2", fireLog))
+                .build()
+        );
+
+        //========================================================================
+        //--- Stack 4, shoot (10-12)
         //========================================================================
         // Actions.runBlocking(
         //     drive.actionBuilder(pose(-36, -36, 235))
         //         //--- Align with balls
-        //         .strafeToSplineHeading(pos(-26, -46), degreeHeading(0))
-        //         //--- Open the balls (push into stack)
-        //         .strafeToSplineHeading(pos(-5, -46), degreeHeading(0))
-        //         .strafeToSplineHeading(pos(-5, -50), degreeHeading(0))
-        //         .strafeToSplineHeading(pos(-5, -46), degreeHeading(0))
-        //         //--- Drive forward to pick up balls (stack 2)
-        //         .strafeToSplineHeading(pos(7, -46), degreeHeading(0))
+        //         .strafeToSplineHeading(pos(14, -50), degreeHeading(10))
+        //         //--- Turn on intake
+        //         .stopAndAdd(new AutoActions.IntakeOn(robot))
+        //         //--- Drive forward to pick up balls at half speed
+        //         .strafeToSplineHeading(pos(30, -50), degreeHeading(0), slow(), slowAccel())
+        //         //--- Reverse intake while moving to shoot position
+        //         //.stopAndAdd(new AutoActions.IntakeReverse(robot))
         //         //--- Align to shoot
-        //         .strafeToSplineHeading(pos(-26, -46), degreeHeading(0))
-        //         .strafeToSplineHeading(pos(-36, -36), degreeHeading(235))
-        //         //--- Wait for flywheel
-        //         .stopAndAdd(new AutoActions.FlywheelWaitForSpeed(robot))
-        //         .waitSeconds(0.3)
-        //         //--- Fire all
-        //         .stopAndAdd(new AutoActions.KickerFireAll(robot))
-        //         .waitSeconds(0.5)
-        //         .stopAndAdd(new AutoActions.KickerRetractAll(robot))
+        //         .strafeToSplineHeading(pos(-36, -36), degreeHeading(224))
+        //         //--- Stop intake
+        //         .stopAndAdd(new AutoActions.IntakeStop(robot))
+        //         //--- Wait for flywheel to get up to speed, then fire all
+        //         .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Stack 3", fireLog))
         //         .build()
         // );
 
         //========================================================================
-        //--- PHASE 4: Pick up stack 3, shoot (10-12)
+        //--- Stack 4 --- PARK next to lever
         //========================================================================
-        // Actions.runBlocking(
-        //     drive.actionBuilder(pose(-36, -36, 235))
-        //         //--- Align with balls
-        //         .strafeToSplineHeading(pos(-26, -46), degreeHeading(0))
-        //         //--- Drive forward to pick up balls (stack 3)
-        //         .strafeToSplineHeading(pos(30, -46), degreeHeading(0))
-        //         //--- Align to shoot
-        //         .strafeToSplineHeading(pos(-26, -46), degreeHeading(0))
-        //         .strafeToSplineHeading(pos(-36, -36), degreeHeading(235))
-        //         //--- Wait for flywheel
-        //         .stopAndAdd(new AutoActions.FlywheelWaitForSpeed(robot))
-        //         .waitSeconds(0.3)
-        //         //--- Fire all
-        //         .stopAndAdd(new AutoActions.KickerFireAll(robot))
-        //         .waitSeconds(0.5)
-        //         .stopAndAdd(new AutoActions.KickerRetractAll(robot))
-        //         .build()
-        // );
-
-        //========================================================================
-        //--- PHASE 5: Pick up from player zone, shoot (13-15)
-        //========================================================================
-        // Actions.runBlocking(
-        //     drive.actionBuilder(pose(-36, -36, 235))
-        //         //--- Align with balls
-        //         .strafeToSplineHeading(pos(-26, -46), degreeHeading(0))
-        //         //--- Drive to player zone (stack 4)
-        //         .strafeToSplineHeading(pos(50, -46), degreeHeading(0))
-        //         .strafeToSplineHeading(pos(60, -50), degreeHeading(270))
-        //         .strafeToSplineHeading(pos(60, -60), degreeHeading(270))
-        //         //--- Back out of player zone
-        //         .strafeToSplineHeading(pos(50, -46), degreeHeading(0))
-        //         //--- Align to shoot
-        //         .strafeToSplineHeading(pos(-26, -46), degreeHeading(0))
-        //         .strafeToSplineHeading(pos(-36, -36), degreeHeading(235))
-        //         //--- Wait for flywheel
-        //         .stopAndAdd(new AutoActions.FlywheelWaitForSpeed(robot))
-        //         .waitSeconds(0.3)
-        //         //--- Fire all
-        //         .stopAndAdd(new AutoActions.KickerFireAll(robot))
-        //         .waitSeconds(0.5)
-        //         .stopAndAdd(new AutoActions.KickerRetractAll(robot))
-        //         .build()
-        // );
-
-        //========================================================================
-        //--- PHASE 6: Park off the line
-        //========================================================================
-        // Actions.runBlocking(
-        //     drive.actionBuilder(pose(-36, -36, 235))
-        //         //--- Move off the line
-        //         .strafeToSplineHeading(pos(-36, -50), degreeHeading(235))
-        //         .build()
-        // );
+        Actions.runBlocking(
+            drive.actionBuilder(pose(-36, -36, 235))
+                //--- Align with balls
+                .strafeToSplineHeading(pos(14, -50), degreeHeading(10))
+                //--- Turn on intake
+                .stopAndAdd(new AutoActions.IntakeOn(robot))
+                //--- Drive forward to pick up balls at half speed
+                .strafeToSplineHeading(pos(30, -50), degreeHeading(0), slow(), slowAccel())
+                //--- Reverse intake while moving to shoot position
+                //.stopAndAdd(new AutoActions.IntakeReverse(robot))
+                //--- Align to lever position
+                .strafeToSplineHeading(pos(0, -50), degreeHeading(180))
+                //--- Stop intake
+                .stopAndAdd(new AutoActions.IntakeStop(robot))
+                .build()
+        );
 
         //--- Stop flywheel and intake
         Actions.runBlocking(new AutoActions.FlywheelStop(robot));
