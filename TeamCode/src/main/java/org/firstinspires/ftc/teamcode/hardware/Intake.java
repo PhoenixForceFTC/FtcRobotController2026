@@ -103,6 +103,11 @@ public class Intake
     private double _leftAvgDist, _leftAvgR, _leftAvgG, _leftAvgB;
     private double _centerAvgDist, _centerAvgR, _centerAvgG, _centerAvgB;
     private double _rightAvgDist, _rightAvgR, _rightAvgG, _rightAvgB;
+
+    //--- Sticky color flags (for telemetry)
+    private boolean _leftIsSticky = false;
+    private boolean _centerIsSticky = false;
+    private boolean _rightIsSticky = false;
     //endregion
 
     //region --- Constructor ---
@@ -169,29 +174,30 @@ public class Intake
     private void detectBalls()
     {
         //--- Update sensor buffers and detect balls using averaged values
-        _leftBallColor = updateAndDetect(
+        //--- Apply "sticky" color logic: only upgrade from UNKNOWN to a color, never downgrade
+        _leftBallColor = updateAndDetectSticky(
             _colorSensorLeft, _distanceSensorLeft,
             _leftDistBuffer, _leftRedBuffer, _leftGreenBuffer, _leftBlueBuffer,
-            _leftBufferIndex, LEFT_DISTANCE_THRESHOLD_MM, "left");
+            _leftBufferIndex, LEFT_DISTANCE_THRESHOLD_MM, "left", _leftBallColor);
         _leftBufferIndex = (_leftBufferIndex + 1) % AVERAGING_SAMPLES;
 
-        _centerBallColor = updateAndDetect(
+        _centerBallColor = updateAndDetectSticky(
             _colorSensorCenter, _distanceSensorCenter,
             _centerDistBuffer, _centerRedBuffer, _centerGreenBuffer, _centerBlueBuffer,
-            _centerBufferIndex, CENTER_DISTANCE_THRESHOLD_MM, "center");
+            _centerBufferIndex, CENTER_DISTANCE_THRESHOLD_MM, "center", _centerBallColor);
         _centerBufferIndex = (_centerBufferIndex + 1) % AVERAGING_SAMPLES;
 
-        _rightBallColor = updateAndDetect(
+        _rightBallColor = updateAndDetectSticky(
             _colorSensorRight, _distanceSensorRight,
             _rightDistBuffer, _rightRedBuffer, _rightGreenBuffer, _rightBlueBuffer,
-            _rightBufferIndex, RIGHT_DISTANCE_THRESHOLD_MM, "right");
+            _rightBufferIndex, RIGHT_DISTANCE_THRESHOLD_MM, "right", _rightBallColor);
         _rightBufferIndex = (_rightBufferIndex + 1) % AVERAGING_SAMPLES;
     }
 
-    private BallColor updateAndDetect(
+    private BallColor updateAndDetectSticky(
         ColorSensor colorSensor, DistanceSensor distanceSensor,
         double[] distBuffer, int[] redBuffer, int[] greenBuffer, int[] blueBuffer,
-        int bufferIndex, double distanceThreshold, String sensorName)
+        int bufferIndex, double distanceThreshold, String sensorName, BallColor previousColor)
     {
         if (colorSensor == null || distanceSensor == null)
         {
@@ -239,8 +245,10 @@ public class Intake
         }
 
         //--- Check distance threshold (per-sensor)
+        //--- If no ball detected, reset color to NONE
         if (avgDist > distanceThreshold)
         {
+            setStickyFlag(sensorName, false);
             return BallColor.NONE;
         }
 
@@ -252,17 +260,36 @@ public class Intake
         //--- Green ball: G/R > 2.5 (background is ~1.4, green balls are 3.0+)
         if (gToR > GREEN_RATIO_THRESHOLD)
         {
+            setStickyFlag(sensorName, false);
             return BallColor.GREEN;
         }
 
         //--- Purple ball: B/G > 0.85 AND G/R < 1.8
         if (bToG > PURPLE_BG_THRESHOLD && gToR < PURPLE_GR_MAX)
         {
+            setStickyFlag(sensorName, false);
             return BallColor.PURPLE;
         }
 
-        //--- Ball detected (under distance threshold) but color unclear → show white light
+        //--- Ball detected but color unclear
+        //--- "Sticky" logic: keep previous color if it was GREEN or PURPLE
+        //--- Only show UNKNOWN (red light) if we never got a good reading
+        if (previousColor == BallColor.GREEN || previousColor == BallColor.PURPLE)
+        {
+            setStickyFlag(sensorName, true);
+            return previousColor;  // Keep the last good color
+        }
+
+        //--- No previous good color, show UNKNOWN (red light)
+        setStickyFlag(sensorName, false);
         return BallColor.UNKNOWN;
+    }
+
+    private void setStickyFlag(String sensorName, boolean isSticky)
+    {
+        if (sensorName.equals("left")) _leftIsSticky = isSticky;
+        else if (sensorName.equals("center")) _centerIsSticky = isSticky;
+        else if (sensorName.equals("right")) _rightIsSticky = isSticky;
     }
 
     //--- Calculate hue (0-360) from RGB values
@@ -498,7 +525,7 @@ public class Intake
             _telemetry.addData("  G/R ratio", "%.2f (GREEN if >%.1f)", gToR, GREEN_RATIO_THRESHOLD);
             _telemetry.addData("  B/G ratio", "%.2f (PURPLE if >%.2f & G/R<%.1f)", bToG, PURPLE_BG_THRESHOLD, PURPLE_GR_MAX);
             _telemetry.addData("  Distance", "%.1f mm (avg %.1f)", dist, _leftAvgDist);
-            _telemetry.addData("  Ball", _leftBallColor);
+            _telemetry.addData("  Ball", "%s%s", _leftBallColor, _leftIsSticky ? " (STICKY)" : "");
         }
         else
         {
@@ -522,7 +549,7 @@ public class Intake
             _telemetry.addData("  G/R ratio", "%.2f (GREEN if >%.1f)", gToR, GREEN_RATIO_THRESHOLD);
             _telemetry.addData("  B/G ratio", "%.2f (PURPLE if >%.2f & G/R<%.1f)", bToG, PURPLE_BG_THRESHOLD, PURPLE_GR_MAX);
             _telemetry.addData("  Distance", "%.1f mm (avg %.1f)", dist, _centerAvgDist);
-            _telemetry.addData("  Ball", _centerBallColor);
+            _telemetry.addData("  Ball", "%s%s", _centerBallColor, _centerIsSticky ? " (STICKY)" : "");
         }
         else
         {
@@ -546,7 +573,7 @@ public class Intake
             _telemetry.addData("  G/R ratio", "%.2f (GREEN if >%.1f)", gToR, GREEN_RATIO_THRESHOLD);
             _telemetry.addData("  B/G ratio", "%.2f (PURPLE if >%.2f & G/R<%.1f)", bToG, PURPLE_BG_THRESHOLD, PURPLE_GR_MAX);
             _telemetry.addData("  Distance", "%.1f mm (avg %.1f)", dist, _rightAvgDist);
-            _telemetry.addData("  Ball", _rightBallColor);
+            _telemetry.addData("  Ball", "%s%s", _rightBallColor, _rightIsSticky ? " (STICKY)" : "");
         }
         else
         {
