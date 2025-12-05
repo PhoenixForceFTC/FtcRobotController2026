@@ -82,11 +82,11 @@ public class Drive
 
         DriveUtils.arcadeDrive(_frontLeft, _frontRight, _rearLeft, _rearRight, _gamepad1, _telemetry, _showInfo, speedMultiplier, speedMultiplierRotate);
 
-        if (_showInfo)
-        {
+        //if (_showInfo)
+        //{
             _telemetry.addData("Drive -> Speed Mode", _isSpeedFast ? "FAST" : "SLOW");
             _telemetry.addData("Drive -> Rotate Mode", _isRotateFast ? "FAST" : "SLOW");
-        }
+        //}
     }
 
     //--- Directional Driving with D-Pad

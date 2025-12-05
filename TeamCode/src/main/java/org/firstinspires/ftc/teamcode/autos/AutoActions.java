@@ -37,12 +37,12 @@ public class AutoActions {
     }
 
     /**
-     * Fire all three kickers at once
+     * Fire all three kickers up (does not wait or retract)
      */
-    public static class KickerFireAll implements Action {
+    public static class KickerFireUp implements Action {
         private final RobotHardware robot;
 
-        public KickerFireAll(RobotHardware robot) {
+        public KickerFireUp(RobotHardware robot) {
             this.robot = robot;
         }
 
@@ -50,6 +50,133 @@ public class AutoActions {
         public boolean run(@NonNull TelemetryPacket telemetryPacket) {
             robot.kickers.fireAll();
             return false;
+        }
+    }
+
+    /**
+     * Fire all kickers, wait 0.5s, then retract - complete firing sequence
+     */
+    public static class KickerFireAll implements Action {
+        private final RobotHardware robot;
+        private ElapsedTime timer;
+        private int state = 0;
+        private static final double FIRE_HOLD_TIME = 0.5;
+
+        public KickerFireAll(RobotHardware robot) {
+            this.robot = robot;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (timer == null) {
+                timer = new ElapsedTime();
+                robot.kickers.fireAll();
+                state = 0;
+            }
+
+            switch (state) {
+                case 0:  // Wait for kick to complete
+                    if (timer.seconds() > FIRE_HOLD_TIME) {
+                        robot.kickers.retractAll();
+                        state = 1;
+                        return false;  // Done
+                    }
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+    }
+
+    /**
+     * Wait for flywheel to reach speed, settle briefly, then fire all kickers, wait, and retract
+     * Complete shooting sequence in one action
+     * Uses wider tolerance than hardware class for faster firing with acceptable accuracy
+     */
+    public static class KickerWaitForSpeedThenFireAll implements Action {
+        private final RobotHardware robot;
+        private final String label;
+        private final java.util.List<String> fireLog;
+        private ElapsedTime timer;
+        private ElapsedTime stableTimer;
+        private int state = 0;
+        private double timeFirstStable = -1;  // Track when we first achieved stable speed
+        private static final double FLYWHEEL_TIMEOUT = 6.0;
+        private static final double STABLE_TIME = 0.1;  // Must stay at target continuously for this long
+        private static final double FIRE_HOLD_TIME = 0.5;
+        private static final double RPM_TOLERANCE = 75.0;  // Wider tolerance for faster firing
+
+        public KickerWaitForSpeedThenFireAll(RobotHardware robot) {
+            this(robot, null, null);
+        }
+
+        public KickerWaitForSpeedThenFireAll(RobotHardware robot, String label, java.util.List<String> fireLog) {
+            this.robot = robot;
+            this.label = label;
+            this.fireLog = fireLog;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (timer == null) {
+                timer = new ElapsedTime();
+                stableTimer = new ElapsedTime();
+            }
+
+            switch (state) {
+                case 0:  // Wait for flywheel to be continuously stable
+                    robot.flywheel.run();  // Update flywheel state
+                    double currentRPM = robot.flywheel.getCurrentRPM();
+                    double targetRPM = robot.flywheel.getTargetRPM();
+                    boolean atTarget = Math.abs(currentRPM - targetRPM) <= RPM_TOLERANCE;
+                    
+                    // Reset stable timer if we leave target range
+                    if (!atTarget) {
+                        stableTimer.reset();
+                        timeFirstStable = -1;
+                    } else if (timeFirstStable < 0) {
+                        // Just entered target range
+                        timeFirstStable = timer.seconds();
+                    }
+                    
+                    // Fire if we've been stable continuously, or overall timeout
+                    boolean stable = atTarget && stableTimer.seconds() > STABLE_TIME;
+                    boolean timedOut = timer.seconds() > FLYWHEEL_TIMEOUT;
+                    
+                    if (stable || timedOut) {
+                        // Log the firing speed with timing info
+                        double firingRPM = robot.flywheel.getCurrentRPM();
+                        double totalTime = timer.seconds();
+                        if (fireLog != null && label != null) {
+                            String reason = timedOut && !stable ? " (TIMEOUT!)" : " (stable)";
+                            String hitInfo = timeFirstStable >= 0 
+                                ? String.format(" [stable@%.2fs, fire@%.2fs]", timeFirstStable, totalTime)
+                                : String.format(" [never stable, fire@%.2fs]", totalTime);
+                            fireLog.add(String.format("%s: %.0f RPM%s%s", label, firingRPM, reason, hitInfo));
+                        }
+                        
+                        robot.kickers.fireAll();
+                        timer.reset();
+                        state = 1;
+                    }
+                    telemetryPacket.put("Flywheel Target", robot.flywheel.getTargetRPM());
+                    telemetryPacket.put("Flywheel Current", robot.flywheel.getCurrentRPM());
+                    telemetryPacket.put("At Target", atTarget);
+                    telemetryPacket.put("Stable Time", stableTimer.seconds());
+                    return true;
+
+                case 1:  // Wait for kick to complete
+                    if (timer.seconds() > FIRE_HOLD_TIME) {
+                        robot.kickers.retractAll();
+                        state = 2;
+                        return false;  // Done
+                    }
+                    return true;
+
+                default:
+                    return false;
+            }
         }
     }
 
@@ -130,7 +257,8 @@ public class AutoActions {
                 timer = new ElapsedTime();
             }
 
-            // Check if at target or timed out
+            // Update flywheel state and check if at target or timed out
+            robot.flywheel.run();
             if (robot.flywheel.isAtTarget() || timer.seconds() > TIMEOUT) {
                 return false;  // Done waiting
             }

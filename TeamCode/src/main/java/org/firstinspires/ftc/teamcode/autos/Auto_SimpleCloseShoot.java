@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.autos;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.MecanumDrive;
@@ -24,6 +25,7 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
  * 
  * Starting Position: Close to goal, facing the goal
  */
+@Disabled
 @Autonomous(name = "Auto: Simple Close Shoot", group = "Auto")
 public class Auto_SimpleCloseShoot extends LinearOpMode {
 

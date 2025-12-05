@@ -15,6 +15,7 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.speed;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.MecanumDrive;
@@ -31,6 +32,7 @@ import org.firstinspires.ftc.teamcode.MecanumDrive;
  *   Side 3: Backward - FAST (1.0)
  *   Side 4: Left     - Custom (0.3)
  */
+@Disabled
 @Autonomous(name = "Auto: Test 15", group = "Test")
 public class Auto_Test15 extends LinearOpMode {
 
