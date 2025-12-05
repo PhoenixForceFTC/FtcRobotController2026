@@ -124,6 +124,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //--- Intake
             //------------------------------------------------------------------------------------------
             _robot.intake.controlIntake();
+            _robot.intake.testColorSensors();  //--- Show color sensor values for tuning
 
             //------------------------------------------------------------------------------------------
             //--- Kickers

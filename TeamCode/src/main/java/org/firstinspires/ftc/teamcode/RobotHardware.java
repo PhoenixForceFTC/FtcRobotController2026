@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode;
 //region --- Imports ---
 import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
@@ -33,7 +34,7 @@ Servo
 I2C
 0 - imu
 1 -
-2 -
+2 - cl (Color Sensor Left)
 3 - cam (Camera)
 
 */
@@ -57,8 +58,8 @@ Servo
 
 I2C
 0 - pinpoint (Pinpoint Odometry)
-1 -
-2 -
+1 - cc (Color Sensor Center)
+2 - 
 3 -
 */
 //endregion
@@ -109,6 +110,8 @@ public class RobotHardware
     //--- Sensors
     //------------------------------------------------------------------------------------------
     public HuskyLens huskyLens = null;
+    public ColorSensor colorSensorLeft = null;
+    public ColorSensor colorSensorCenter = null;
 
     //------------------------------------------------------------------------------------------
     //--- Custom Hardware Classes
@@ -180,7 +183,6 @@ public class RobotHardware
         servoKickerMiddle = _opMode.hardwareMap.get(Servo.class, "km");
         servoKickerRight = _opMode.hardwareMap.get(Servo.class, "kr");
 
-        //--- Reverse kicker left direction (mounted opposite to middle/right)
         servoKickerLeft.setDirection(Servo.Direction.REVERSE);
 
         servoCameraYaw = _opMode.hardwareMap.get(Servo.class, "yaw");
@@ -192,6 +194,10 @@ public class RobotHardware
 
         //--- HuskyLens
         huskyLens = _opMode.hardwareMap.get(HuskyLens.class, "cam");
+
+        //--- Color Sensors
+        colorSensorLeft = _opMode.hardwareMap.get(ColorSensor.class, "cl");
+        colorSensorCenter = _opMode.hardwareMap.get(ColorSensor.class, "cc");
 
         //------------------------------------------------------------------------------------------
         //--- Hardware Constructors
@@ -215,8 +221,7 @@ public class RobotHardware
                 _opMode.gamepad2,
                 _opMode.telemetry,
                 robotVersion,
-                false
-                //SHOW_INFO
+                SHOW_INFO
         );
 
         lights = new Lights(
@@ -230,6 +235,10 @@ public class RobotHardware
                 SHOW_INFO
         );
         lights.initialize();
+
+        //--- Connect color sensors and lights to intake for ball detection
+        intake.setColorSensors(colorSensorLeft, colorSensorCenter, null);  // Right sensor not yet installed
+        intake.setLights(lights);
 
         flywheel = new Flywheel(
                 motorFlyLeft,
@@ -286,6 +295,7 @@ public class RobotHardware
     //------------------------------------------------------------------------------------------
     public void run()
     {
+        intake.run();
         lights.run();
         kickers.run();
         flywheel.run();
