@@ -497,8 +497,9 @@ public class Intake
 
     //region --- Testing ---
 
-    //--- Test color sensors without intake running
-    //--- Call this in your main loop to see raw sensor values
+    //--- Test color sensors - shows telemetry for tuning
+    //--- Always runs detection and updates lights so testing works
+    //--- regardless of intake state
     public void testColorSensors()
     {
         //--- Always detect balls and update lights in test mode
