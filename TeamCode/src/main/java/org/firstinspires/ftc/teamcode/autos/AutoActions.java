@@ -93,26 +93,41 @@ public class AutoActions {
      * Wait for flywheel to reach speed, settle briefly, then fire all kickers, wait, and retract
      * Complete shooting sequence in one action
      * Uses wider tolerance than hardware class for faster firing with acceptable accuracy
+     * Automatically adjusts flywheel RPM based on ball count in intake
+     * 
+     * @param robot The robot hardware
+     * @param rpm1Ball RPM for 1 ball (depends on shooting position)
+     * @param rpm2Balls RPM for 2 balls (depends on shooting position)
+     * @param rpm3Balls RPM for 3 balls (depends on shooting position)
      */
     public static class KickerWaitForSpeedThenFireAll implements Action {
         private final RobotHardware robot;
         private final String label;
         private final java.util.List<String> fireLog;
+        private final double rpm1Ball;
+        private final double rpm2Balls;
+        private final double rpm3Balls;
         private ElapsedTime timer;
         private ElapsedTime stableTimer;
         private int state = 0;
         private double timeFirstStable = -1;  // Track when we first achieved stable speed
+        private boolean rpmSet = false;       // Track if we've set RPM based on ball count
+        private int ballCount = 0;            // Number of balls detected in intake
         private static final double FLYWHEEL_TIMEOUT = 6.0;
         private static final double STABLE_TIME = 0.1;  // Must stay at target continuously for this long
         private static final double FIRE_HOLD_TIME = 0.5;
         private static final double RPM_TOLERANCE = 75.0;  // Wider tolerance for faster firing
 
-        public KickerWaitForSpeedThenFireAll(RobotHardware robot) {
-            this(robot, null, null);
+        public KickerWaitForSpeedThenFireAll(RobotHardware robot, double rpm1Ball, double rpm2Balls, double rpm3Balls) {
+            this(robot, rpm1Ball, rpm2Balls, rpm3Balls, null, null);
         }
 
-        public KickerWaitForSpeedThenFireAll(RobotHardware robot, String label, java.util.List<String> fireLog) {
+        public KickerWaitForSpeedThenFireAll(RobotHardware robot, double rpm1Ball, double rpm2Balls, double rpm3Balls, 
+                                              String label, java.util.List<String> fireLog) {
             this.robot = robot;
+            this.rpm1Ball = rpm1Ball;
+            this.rpm2Balls = rpm2Balls;
+            this.rpm3Balls = rpm3Balls;
             this.label = label;
             this.fireLog = fireLog;
         }
@@ -122,6 +137,21 @@ public class AutoActions {
             if (timer == null) {
                 timer = new ElapsedTime();
                 stableTimer = new ElapsedTime();
+            }
+            
+            //--- On first run, read ball count and set RPM accordingly
+            if (!rpmSet) {
+                ballCount = robot.intake.getBallCount();
+                double rpm;
+                if (ballCount <= 1) {
+                    rpm = rpm1Ball;
+                } else if (ballCount == 2) {
+                    rpm = rpm2Balls;
+                } else {
+                    rpm = rpm3Balls;
+                }
+                robot.flywheel.setSpeed(rpm);
+                rpmSet = true;
             }
 
             switch (state) {
@@ -145,7 +175,7 @@ public class AutoActions {
                     boolean timedOut = timer.seconds() > FLYWHEEL_TIMEOUT;
                     
                     if (stable || timedOut) {
-                        // Log the firing speed with timing info
+                        // Log the firing speed with timing info and ball count
                         double firingRPM = robot.flywheel.getCurrentRPM();
                         double totalTime = timer.seconds();
                         if (fireLog != null && label != null) {
@@ -153,7 +183,7 @@ public class AutoActions {
                             String hitInfo = timeFirstStable >= 0 
                                 ? String.format(" [stable@%.2fs, fire@%.2fs]", timeFirstStable, totalTime)
                                 : String.format(" [never stable, fire@%.2fs]", totalTime);
-                            fireLog.add(String.format("%s: %.0f RPM%s%s", label, firingRPM, reason, hitInfo));
+                            fireLog.add(String.format("%s: %.0f RPM, %d balls%s%s", label, firingRPM, ballCount, reason, hitInfo));
                         }
                         
                         robot.kickers.fireAll();

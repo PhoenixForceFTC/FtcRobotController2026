@@ -22,7 +22,7 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slowAccel;
  * Auto_Close
  * 
  * Full autonomous routine with ALLIANCE SELECTION:
- * - Press X on gamepad2 during init to select BLUE alliance
+ * - Press X on gamepad2 during init to select BLUE alliance (default)
  * - Press B on gamepad2 during init to select RED alliance
  * - Press Y on gamepad2 to select PARK IN FRONT
  * - Press A on gamepad2 to select PARK BY LEVER (default)
