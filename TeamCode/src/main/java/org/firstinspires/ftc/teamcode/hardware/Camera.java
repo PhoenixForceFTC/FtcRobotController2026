@@ -146,6 +146,10 @@ public class Camera
     //--- Light hold time (debounce) - lights stay on this long after losing tracking
     private static final double LIGHT_HOLD_TIME = 0.5;   // Seconds to hold lights after losing tag
 
+    //--- Distance smoothing constants
+    private static final double EMA_ALPHA = 0.3;         // EMA weight (0.3 = 30% new, 70% old) - higher = more responsive
+    private static final int SMA_SAMPLE_COUNT = 5;       // Number of samples for simple moving average
+
     //--- Pre-match camera position (default, can be overridden)
     private static final double PREMATCH_YAW = 0.5;      // Yaw for pre-match (adjust as needed)
     private static final double PREMATCH_PITCH = 0.70;   // Pitch for pre-match obelisk viewing
@@ -188,6 +192,14 @@ public class Camera
         SHORT,  // Locked to FIXED_DISTANCE_SHORT
         MEDIUM, // Locked to FIXED_DISTANCE_MEDIUM
         LONG    // Locked to FIXED_DISTANCE_LONG
+    }
+
+    //--- Distance smoothing mode
+    public enum SmoothingMode
+    {
+        NONE,   // No smoothing - raw readings
+        EMA,    // Exponential moving average (default) - responsive with smoothing
+        SMA     // Simple moving average - 5 samples, more lag but very stable
     }
     //endregion
 
@@ -240,6 +252,13 @@ public class Camera
     private double _storedDistanceInches = -1.0;    // Last good distance (persists when tag lost)
     private double _velocityAdjustment = 0.0;       // Manual adjustment to RPM (added to lookup value)
     private DistanceLockType _distanceLockType = DistanceLockType.NONE;  // Distance lock state
+
+    //--- Distance smoothing state
+    private SmoothingMode _smoothingMode = SmoothingMode.EMA;  // Default to EMA
+    private double _emaDistance = -1.0;             // Current EMA value
+    private double[] _smaBuffer = new double[SMA_SAMPLE_COUNT];  // Circular buffer for SMA
+    private int _smaIndex = 0;                      // Current index in SMA buffer
+    private int _smaCount = 0;                      // Number of valid samples in SMA buffer
 
     //--- Scan mode state
     private ScanMode _scanMode = ScanMode.DEMO;     // Current operating mode
@@ -773,6 +792,7 @@ public class Camera
 
     //--- Calculate distance from the detected AprilTag
     //--- Uses the formula: distance = (realSize * focalLength) / pixelSize
+    //--- Applies smoothing based on current smoothing mode (EMA, SMA, or none)
     private void updateDistance()
     {
         if (_blocks.length == 0)
@@ -790,8 +810,47 @@ public class Camera
             return;
         }
 
-        //--- Calculate distance using similar triangles
-        _lastDistanceInches = (TAG_REAL_SIZE_INCHES * HUSKY_FOCAL_LENGTH) / pixelWidth;
+        //--- Calculate raw distance using similar triangles
+        double rawDistance = (TAG_REAL_SIZE_INCHES * HUSKY_FOCAL_LENGTH) / pixelWidth;
+        
+        //--- Apply smoothing based on mode
+        switch (_smoothingMode)
+        {
+            case EMA:
+                //--- Exponential moving average: smoothed = alpha * new + (1-alpha) * old
+                if (_emaDistance < 0)
+                {
+                    //--- First reading, initialize EMA
+                    _emaDistance = rawDistance;
+                }
+                else
+                {
+                    _emaDistance = (EMA_ALPHA * rawDistance) + ((1.0 - EMA_ALPHA) * _emaDistance);
+                }
+                _lastDistanceInches = _emaDistance;
+                break;
+                
+            case SMA:
+                //--- Simple moving average: average of last N samples
+                _smaBuffer[_smaIndex] = rawDistance;
+                _smaIndex = (_smaIndex + 1) % SMA_SAMPLE_COUNT;
+                if (_smaCount < SMA_SAMPLE_COUNT) _smaCount++;
+                
+                //--- Calculate average of valid samples
+                double sum = 0;
+                for (int i = 0; i < _smaCount; i++)
+                {
+                    sum += _smaBuffer[i];
+                }
+                _lastDistanceInches = sum / _smaCount;
+                break;
+                
+            case NONE:
+            default:
+                //--- No smoothing - use raw reading
+                _lastDistanceInches = rawDistance;
+                break;
+        }
         
         //--- Store this as the last good distance (persists when tag is lost)
         //--- But only if distance is not locked (manual override active)
@@ -880,6 +939,61 @@ public class Camera
     public DistanceLockType getDistanceLockType()
     {
         return _distanceLockType;
+    }
+
+    //--- Set distance smoothing mode
+    public void setSmoothingMode(SmoothingMode mode)
+    {
+        _smoothingMode = mode;
+        resetSmoothing();  // Reset buffers when changing modes
+    }
+
+    //--- Get current smoothing mode
+    public SmoothingMode getSmoothingMode()
+    {
+        return _smoothingMode;
+    }
+
+    //--- Cycle through smoothing modes: EMA -> SMA -> NONE -> EMA
+    public void cycleSmoothingMode()
+    {
+        switch (_smoothingMode)
+        {
+            case EMA:
+                setSmoothingMode(SmoothingMode.SMA);
+                break;
+            case SMA:
+                setSmoothingMode(SmoothingMode.NONE);
+                break;
+            case NONE:
+            default:
+                setSmoothingMode(SmoothingMode.EMA);
+                break;
+        }
+    }
+
+    //--- Reset smoothing buffers (call when starting fresh or changing modes)
+    public void resetSmoothing()
+    {
+        _emaDistance = -1.0;
+        _smaIndex = 0;
+        _smaCount = 0;
+        for (int i = 0; i < SMA_SAMPLE_COUNT; i++)
+        {
+            _smaBuffer[i] = 0;
+        }
+    }
+
+    //--- Get smoothing mode as display string
+    public String getSmoothingModeString()
+    {
+        switch (_smoothingMode)
+        {
+            case EMA:  return "EMA (α=" + EMA_ALPHA + ")";
+            case SMA:  return "SMA (" + SMA_SAMPLE_COUNT + " samples)";
+            case NONE: return "OFF (raw)";
+            default:   return "Unknown";
+        }
     }
 
     //--- Get suggested flywheel velocity based on stored distance and ball count

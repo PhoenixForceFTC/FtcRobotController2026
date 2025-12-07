@@ -183,6 +183,17 @@ public class Drive
         moveRight(speed);
     }
 
+    //--- Public drive forward/backward for external use (e.g., RPM tuning)
+    public void driveForward(double speed)
+    {
+        moveForward(speed);
+    }
+
+    public void driveBackward(double speed)
+    {
+        moveBackward(speed);
+    }
+
     //endregion
 
     //region --- Alignment Support Methods ---
