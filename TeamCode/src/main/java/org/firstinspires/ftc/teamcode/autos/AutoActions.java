@@ -150,7 +150,7 @@ public class AutoActions {
                 } else {
                     rpm = rpm3Balls;
                 }
-                robot.flywheel.setSpeed(rpm);
+                robot.flywheel.setVelocity(rpm);
                 rpmSet = true;
             }
 
