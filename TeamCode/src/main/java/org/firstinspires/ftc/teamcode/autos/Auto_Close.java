@@ -310,14 +310,22 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(pose(36, -36, 305))
+                //--- Align with balls
                 //--- Blue: (-32, -50, 10°) → Red: (+32, -50, 170°)
                 .strafeToSplineHeading(pos(32, -50), degreeHeading(170))
+                //--- Turn on intake
                 .stopAndAdd(new AutoActions.IntakeOn(robot))
+                //--- Drive forward to pick up balls at half speed
                 //--- Blue: (-16, -50, 0°) → Red: (+16, -50, 180°)
                 .strafeToSplineHeading(pos(16, -50), degreeHeading(180), slow(), slowAccel())
+                //--- Reverse intake while moving to shoot position
+                //.stopAndAdd(new AutoActions.IntakeReverse(robot))
+                //--- Align to shoot
                 //--- Blue: (-36, -36, 220°) → Red: (+36, -36, 320°)
                 .strafeToSplineHeading(pos(36, -36), degreeHeading(320))
+                //--- Stop intake
                 .stopAndAdd(new AutoActions.IntakeStop(robot))
+                //--- Wait for flywheel to get up to speed, then fire all
                 .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Stack 1", fireLog))
                 .build()
         );
@@ -327,14 +335,22 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(pose(36, -36, 305))
+                //--- Align with balls
                 //--- Blue: (-9, -50, 10°) → Red: (+9, -50, 170°)
                 .strafeToSplineHeading(pos(9, -50), degreeHeading(170))
+                //--- Turn on intake
                 .stopAndAdd(new AutoActions.IntakeOn(robot))
+                //--- Drive forward to pick up balls at half speed
                 //--- Blue: (7, -50, 0°) → Red: (-7, -50, 180°)
                 .strafeToSplineHeading(pos(-7, -50), degreeHeading(180), slow(), slowAccel())
+                //--- Reverse intake while moving to shoot position
+                //.stopAndAdd(new AutoActions.IntakeReverse(robot))
+                //--- Align to shoot
                 //--- Blue: (-36, -36, 224°) → Red: (+36, -36, 316°)
                 .strafeToSplineHeading(pos(36, -36), degreeHeading(316))
+                //--- Stop intake
                 .stopAndAdd(new AutoActions.IntakeStop(robot))
+                //--- Wait for flywheel to get up to speed, then fire all
                 .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Stack 2", fireLog))
                 .build()
         );
@@ -344,13 +360,20 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(pose(36, -36, 305))
+                //--- Align with balls
                 //--- Blue: (14, -50, 10°) → Red: (-14, -50, 170°)
                 .strafeToSplineHeading(pos(-14, -50), degreeHeading(170))
+                //--- Turn on intake
                 .stopAndAdd(new AutoActions.IntakeOn(robot))
+                //--- Drive forward to pick up balls at half speed
                 //--- Blue: (30, -50, 0°) → Red: (-30, -50, 180°)
                 .strafeToSplineHeading(pos(-30, -50), degreeHeading(180), slow(), slowAccel())
+                //--- Reverse intake while moving to shoot position
+                //.stopAndAdd(new AutoActions.IntakeReverse(robot))
+                //--- Align to lever position
                 //--- Blue: (0, -50, 180°) → Red: (0, -50, 0°)
                 .strafeToSplineHeading(pos(0, -50), degreeHeading(0))
+                //--- Stop intake
                 .stopAndAdd(new AutoActions.IntakeStop(robot))
                 .build()
         );
