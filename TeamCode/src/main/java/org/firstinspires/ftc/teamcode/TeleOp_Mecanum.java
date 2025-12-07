@@ -2,11 +2,19 @@ package org.firstinspires.ftc.teamcode;
 
 //region -- Imports ---
 
+import com.acmerobotics.roadrunner.Pose2d;
+import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.autos.AutoActions;
+import org.firstinspires.ftc.teamcode.hardware.Camera;
 import org.firstinspires.ftc.teamcode.hardware.Lights;
+
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pos;
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.degreeHeading;
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
 //endregion
 
 //region --- Controls ---
@@ -54,7 +62,10 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //  - Dpad Right        - (available)
 //
 //  TRIGGERS/BUMPERS:
-//  - Right Trigger     - (available)
+//  - Right Trigger     - AUTO-FIRE SEQUENCE (RoadRunner controlled)
+//                        • Sets position to (0,0) heading 180°
+//                        • Moves forward 3", rotates to 235°
+//                        • Fires 3 balls at LONG distance
 //  - Right Bumper      - (available)
 //  - Left Trigger      - (available)
 //  - Left Bumper       - (available)
@@ -85,7 +96,7 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //
 //  - Y (▲)             - Toggle SHORT distance lock (1 orange light)
 //  - B (○)             - Toggle MEDIUM distance lock (2 orange lights)
-//  - A (✕)             - Toggle LONG distance lock (3 orange lights)
+//  - A (✕)            - Toggle LONG distance lock (3 orange lights)
 //  - X (■)             - (available)
 //
 //======================================================================
@@ -99,6 +110,12 @@ public class TeleOp_Mecanum extends LinearOpMode
     //------------------------------------------------------------------------------------------
     RobotHardware _robot = new RobotHardware(this);
     public ElapsedTime _runtime = new ElapsedTime();
+    
+    //--- Auto-fire sequence state
+    private boolean _gp2RightTriggerPressed = false;
+    
+    //--- RPM for auto-fire (uses LONG distance lookup)
+    private static final double AUTO_FIRE_RPM = 3800.0;  // RPM for 110" distance
 
     //------------------------------------------------------------------------------------------
     //--- OpMode
@@ -176,6 +193,22 @@ public class TeleOp_Mecanum extends LinearOpMode
             //_robot.camera.fineTuneCameraPos();
 
             //------------------------------------------------------------------------------------------
+            //--- Gamepad 2 Right Trigger - Auto-Fire Sequence (RoadRunner controlled)
+            //------------------------------------------------------------------------------------------
+            if (gamepad2.right_trigger > 0.5)
+            {
+                if (!_gp2RightTriggerPressed)
+                {
+                    _gp2RightTriggerPressed = true;
+                    runAutoFireSequence();
+                }
+            }
+            else
+            {
+                _gp2RightTriggerPressed = false;
+            }
+
+            //------------------------------------------------------------------------------------------
             //--- Lights
             //------------------------------------------------------------------------------------------
             // _robot.lights.testColors();
@@ -186,6 +219,42 @@ public class TeleOp_Mecanum extends LinearOpMode
             //------------------------------------------------------------------------------------------
             telemetry.update();
         }
+    }
+
+    //------------------------------------------------------------------------------------------
+    //--- Auto-Fire Sequence (RoadRunner controlled)
+    //--- Triggered by gamepad2 right trigger
+    //--- Sets position to (0,0) heading 180°, moves forward 3", rotates to 235°, fires 3 balls
+    //------------------------------------------------------------------------------------------
+    private void runAutoFireSequence()
+    {
+        //--- Lock distance to LONG for this shot
+        _robot.camera.setFixedDistanceLong();
+        
+        //--- Show yellow lights during auto-fire sequence
+        _robot.lights.setAllYellow();
+        
+        //--- Set starting pose: (0, 0) heading 180°
+        Pose2d startPose = pose(0, 0, 180);
+        MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
+        
+        //--- Run the sequence: move forward 3", rotate to 235°, fire all 3 balls
+        Actions.runBlocking(
+            drive.actionBuilder(startPose)
+                //--- Start flywheel
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(_robot, AUTO_FIRE_RPM))
+                //--- Move forward 3" and rotate to 235°
+                .strafeToSplineHeading(pos(0, 3), degreeHeading(235))
+                //--- Wait for flywheel and fire all 3 balls
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(_robot, AUTO_FIRE_RPM, AUTO_FIRE_RPM, AUTO_FIRE_RPM))
+                .build()
+        );
+        
+        //--- Unlock distance after firing
+        _robot.camera.unlockDistance();
+        
+        //--- Turn off lights (camera will take over on next run)
+        _robot.lights.setAllOff();
     }
 
 }
