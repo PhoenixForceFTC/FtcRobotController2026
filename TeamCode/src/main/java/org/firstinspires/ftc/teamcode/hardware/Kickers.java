@@ -199,10 +199,16 @@ public class Kickers
                 if (_velocityFireAll)
                 {
                     fireAll();
+                    //--- Disable alignment after firing all (not a sequence)
+                    if (_camera != null)
+                    {
+                        _camera.disableAutoAlignForFiring();
+                    }
                 }
                 else
                 {
                     fireSequence();
+                    //--- Sequence will disable alignment when complete
                 }
                 _velocityFirePending = false;
             }
@@ -225,10 +231,16 @@ public class Kickers
                 if (_alignmentFireAll)
                 {
                     fireAll();
+                    //--- Disable alignment after firing all (not a sequence)
+                    if (_camera != null)
+                    {
+                        _camera.disableAutoAlignForFiring();
+                    }
                 }
                 else
                 {
                     fireSequence();
+                    //--- Sequence will disable alignment when complete
                 }
             }
         }
