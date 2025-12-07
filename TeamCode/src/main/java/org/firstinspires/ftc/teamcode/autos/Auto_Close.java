@@ -24,6 +24,8 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slowAccel;
  * Full autonomous routine with ALLIANCE SELECTION:
  * - Press X on gamepad2 during init to select BLUE alliance
  * - Press B on gamepad2 during init to select RED alliance
+ * - Press Dpad Up on gamepad2 to increase start delay (+1 second)
+ * - Press Dpad Down on gamepad2 to decrease start delay (-1 second)
  * 
  * Blue Alliance: Starts at (-55, -45) facing 235°
  * Red Alliance:  Starts at (+55, -45) facing 305° (mirrored)
@@ -60,6 +62,11 @@ public class Auto_Close extends LinearOpMode {
 
     //--- Detected ball sequence
     private Camera.BallSequence detectedSequence = Camera.BallSequence.UNKNOWN;
+
+    //--- Programmable delay (seconds) - adjustable with dpad up/down
+    private int startDelaySeconds = 0;
+    private boolean dpadUpPressed = false;
+    private boolean dpadDownPressed = false;
 
     @Override
     public void runOpMode() throws InterruptedException 
@@ -99,12 +106,43 @@ public class Auto_Close extends LinearOpMode {
             //--- Run pre-match detection (updates lights when sequence detected)
             detectedSequence = robot.camera.runPreMatchDetection();
 
+            //--- Adjust start delay with dpad up/down (with debounce)
+            if (gamepad2.dpad_up)
+            {
+                if (!dpadUpPressed)
+                {
+                    dpadUpPressed = true;
+                    if (startDelaySeconds < 120) startDelaySeconds++;
+                }
+            }
+            else
+            {
+                dpadUpPressed = false;
+            }
+
+            if (gamepad2.dpad_down)
+            {
+                if (!dpadDownPressed)
+                {
+                    dpadDownPressed = true;
+                    if (startDelaySeconds > 0) startDelaySeconds--;
+                }
+            }
+            else
+            {
+                dpadDownPressed = false;
+            }
+
             //--- Display current selection and detection status
             telemetry.addData("=== ALLIANCE SELECTION ===", "");
             telemetry.addData("Press X", "BLUE Alliance");
             telemetry.addData("Press B", "RED Alliance");
             telemetry.addLine("");
             telemetry.addData(">>> SELECTED", selectedAlliance);
+            telemetry.addLine("");
+            telemetry.addData("=== START DELAY ===", "");
+            telemetry.addData("Dpad Up/Down", "+/- 1 second");
+            telemetry.addData(">>> DELAY", "%d seconds", startDelaySeconds);
             telemetry.addLine("");
             telemetry.addData("=== SEQUENCE DETECTION ===", "");
             telemetry.addData("Camera Connected", robot.camera.isConnected());
@@ -164,6 +202,8 @@ public class Auto_Close extends LinearOpMode {
                 //--- Start flywheel while driving
                 .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
                 .waitSeconds(2.0)  //--- Give flywheel time to spin up
+                //--- Programmable delay (set during init with dpad up/down)
+                .waitSeconds(startDelaySeconds)
                 //--- Align to shoot
                 .strafeToSplineHeading(pos(-33.5, -36.5), degreeHeading(227))
                 //--- Wait for flywheel to get up to speed, then fire all
@@ -257,6 +297,8 @@ public class Auto_Close extends LinearOpMode {
             drive.actionBuilder(startPose)
                 .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
                 .waitSeconds(2.0)
+                //--- Programmable delay (set during init with dpad up/down)
+                .waitSeconds(startDelaySeconds)
                 //--- Blue: (-33.5, -36.5, 227°) → Red: (+33.5, -36.5, 313°)
                 .strafeToSplineHeading(pos(33.5, -36.5), degreeHeading(313))
                 .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(robot, "Preloads", fireLog))
