@@ -40,14 +40,95 @@ public class Camera
     private static final double TAG_REAL_SIZE_INCHES = 6.5;  // Physical AprilTag size
     private static final double HUSKY_FOCAL_LENGTH = 306.0;  // Calibrated focal length
 
-    //--- Velocity suggestion based on distance (linear interpolation)
-    //--- Calibrated: 29" → 2767 RPM, 66" → 2979 RPM
-    private static final double VELOCITY_NEAR_DISTANCE = 29.0;   // Near calibration point (inches)
-    private static final double VELOCITY_FAR_DISTANCE = 66.0;    // Far calibration point (inches)
-    private static final double VELOCITY_MIN_RPM_DEFAULT = 2767.0; // RPM at near distance (29")
-    private static final double VELOCITY_MAX_RPM = 2979.0;       // RPM at far distance (66")
-    private static final double VELOCITY_FLOOR = 2500.0;         // Absolute minimum RPM allowed
-    private static final double VELOCITY_INCREMENT = 50.0;       // RPM change per button press (smaller for fine tuning)
+    //--- RPM lookup tables by distance (index 0 = 1 inch, index 119 = 120 inches)
+    //--- When firing all balls at once, flywheel slows down so we need higher initial RPM
+    //--- Each table has 120 entries, one per inch from 1" to 120"
+    //--- TODO: Tune these values based on actual shooting tests
+    private static final double[] RPM_TABLE_1_BALL = {
+        //--- 1-10 inches (very close, shouldn't happen in practice)
+        2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000,
+        //--- 11-20 inches
+        2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000,
+        //--- 21-30 inches (close shots)
+        2050, 2100, 2150, 2200, 2250, 2300, 2350, 2400, 2450, 2500,
+        //--- 31-40 inches
+        2525, 2550, 2575, 2600, 2625, 2650, 2675, 2700, 2725, 2750,
+        //--- 41-50 inches
+        2775, 2800, 2825, 2850, 2875, 2900, 2925, 2950, 2975, 3000,
+        //--- 51-60 inches
+        3000, 3025, 3050, 3075, 3100, 3125, 3150, 3175, 3200, 3200,
+        //--- 61-70 inches
+        3200, 3225, 3250, 3275, 3300, 3325, 3350, 3375, 3400, 3400,
+        //--- 71-80 inches
+        3400, 3425, 3450, 3475, 3500, 3525, 3550, 3575, 3600, 3600,
+        //--- 81-90 inches
+        3600, 3625, 3650, 3675, 3700, 3725, 3750, 3775, 3800, 3800,
+        //--- 91-100 inches
+        3800, 3825, 3850, 3875, 3900, 3925, 3950, 3975, 4000, 4000,
+        //--- 101-110 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 111-120 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000
+    };
+    
+    private static final double[] RPM_TABLE_2_BALLS = {
+        //--- 1-10 inches (very close, shouldn't happen in practice)
+        2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300,
+        //--- 11-20 inches
+        2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300, 2300,
+        //--- 21-30 inches (close shots)
+        2350, 2400, 2450, 2500, 2550, 2600, 2650, 2700, 2750, 2800,
+        //--- 31-40 inches
+        2825, 2850, 2875, 2900, 2925, 2950, 2975, 3000, 3025, 3050,
+        //--- 41-50 inches
+        3075, 3100, 3125, 3150, 3175, 3200, 3225, 3250, 3275, 3300,
+        //--- 51-60 inches
+        3300, 3325, 3350, 3375, 3400, 3425, 3450, 3475, 3500, 3500,
+        //--- 61-70 inches
+        3500, 3525, 3550, 3575, 3600, 3625, 3650, 3675, 3700, 3700,
+        //--- 71-80 inches
+        3700, 3725, 3750, 3775, 3800, 3825, 3850, 3875, 3900, 3900,
+        //--- 81-90 inches
+        3900, 3925, 3950, 3975, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 91-100 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 101-110 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 111-120 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000
+    };
+    
+    private static final double[] RPM_TABLE_3_BALLS = {
+        //--- 1-10 inches (very close, shouldn't happen in practice)
+        2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600,
+        //--- 11-20 inches
+        2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600,
+        //--- 21-30 inches (close shots)
+        2650, 2700, 2750, 2800, 2850, 2900, 2950, 3000, 3050, 3100,
+        //--- 31-40 inches
+        3125, 3150, 3175, 3200, 3225, 3250, 3275, 3300, 3325, 3350,
+        //--- 41-50 inches
+        3375, 3400, 3425, 3450, 3475, 3500, 3525, 3550, 3575, 3600,
+        //--- 51-60 inches
+        3600, 3625, 3650, 3675, 3700, 3725, 3750, 3775, 3800, 3800,
+        //--- 61-70 inches
+        3800, 3825, 3850, 3875, 3900, 3925, 3950, 3975, 4000, 4000,
+        //--- 71-80 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 81-90 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 91-100 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 101-110 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000,
+        //--- 111-120 inches
+        4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000
+    };
+
+    //--- Velocity adjustment state (for manual tuning with Y/A buttons)
+    private static final double VELOCITY_FLOOR = 2000.0;         // Absolute minimum RPM allowed
+    private static final double VELOCITY_CEILING = 4000.0;       // Absolute maximum RPM allowed
+    private static final double VELOCITY_INCREMENT = 50.0;       // RPM change per button press
 
     //--- Manual Target mode velocity presets (RPM)
     private static final double VELOCITY_CLOSE = 2700.0;   // Y button - close shot
@@ -145,7 +226,7 @@ public class Camera
     //--- Distance estimation state
     private double _lastDistanceInches = -1.0;      // Current distance (-1 if no tag visible)
     private double _storedDistanceInches = -1.0;    // Last good distance (persists when tag lost)
-    private double _velocityMinRPM = VELOCITY_MIN_RPM_DEFAULT;  // Adjustable min velocity
+    private double _velocityAdjustment = 0.0;       // Manual adjustment to RPM (added to lookup value)
 
     //--- Scan mode state
     private ScanMode _scanMode = ScanMode.DEMO;     // Current operating mode
@@ -696,54 +777,65 @@ public class Camera
         return String.format("%d in", inches);
     }
 
-    //--- Get the minimum flywheel velocity (for close shots)
-    public double getMinVelocity()
+    //--- Get the velocity adjustment (manual tuning offset)
+    public double getVelocityAdjustment()
     {
-        return _velocityMinRPM;
+        return _velocityAdjustment;
     }
 
-    //--- Get the maximum flywheel velocity (for far shots)
-    public double getMaxVelocity()
+    //--- Increase velocity adjustment by increment
+    public void increaseVelocityAdjustment()
     {
-        return VELOCITY_MAX_RPM;
+        _velocityAdjustment = Math.min(500.0, _velocityAdjustment + VELOCITY_INCREMENT);
     }
 
-    //--- Increase minimum velocity by increment (clamped to max)
-    public void increaseMinVelocity()
+    //--- Decrease velocity adjustment by increment
+    public void decreaseVelocityAdjustment()
     {
-        _velocityMinRPM = Math.min(VELOCITY_MAX_RPM, _velocityMinRPM + VELOCITY_INCREMENT);
+        _velocityAdjustment = Math.max(-500.0, _velocityAdjustment - VELOCITY_INCREMENT);
     }
 
-    //--- Decrease minimum velocity by increment (clamped to floor)
-    public void decreaseMinVelocity()
+    //--- Reset velocity adjustment to zero
+    public void resetVelocityAdjustment()
     {
-        _velocityMinRPM = Math.max(VELOCITY_FLOOR, _velocityMinRPM - VELOCITY_INCREMENT);
+        _velocityAdjustment = 0.0;
     }
 
-    //--- Set minimum velocity directly (clamped to valid range)
-    public void setMinVelocity(double rpm)
-    {
-        _velocityMinRPM = Math.max(VELOCITY_FLOOR, Math.min(VELOCITY_MAX_RPM, rpm));
-    }
-
-    //--- Get suggested flywheel velocity based on stored distance (returns -1 if no reading)
+    //--- Get suggested flywheel velocity based on stored distance and ball count
     //--- Uses stored distance so velocity is stable even if tag is momentarily lost
-    //--- Uses linear interpolation between near/far distances
-    public double getSuggestedVelocity()
+    //--- Uses lookup table based on ball count (1, 2, or 3 balls)
+    //--- @param ballCount Number of balls to fire (1-3)
+    //--- @return Suggested RPM, or -1 if no distance reading
+    public double getSuggestedVelocity(int ballCount)
     {
         //--- Use stored distance (persists when tag lost)
         if (_storedDistanceInches < 0) return -1.0;
         
-        //--- Clamp distance to valid range
-        double clampedDistance = Math.max(VELOCITY_NEAR_DISTANCE, 
-                                          Math.min(VELOCITY_FAR_DISTANCE, _storedDistanceInches));
+        //--- Convert distance to array index (0-119 for 1-120 inches)
+        int index = (int) Math.round(_storedDistanceInches) - 1;
+        index = Math.max(0, Math.min(119, index));  // Clamp to valid range
         
-        //--- Linear interpolation: velocity = min + (max - min) * ((distance - near) / (far - near))
-        double ratio = (clampedDistance - VELOCITY_NEAR_DISTANCE) / 
-                       (VELOCITY_FAR_DISTANCE - VELOCITY_NEAR_DISTANCE);
-        double suggestedVelocity = _velocityMinRPM + (VELOCITY_MAX_RPM - _velocityMinRPM) * ratio;
+        //--- Select appropriate table based on ball count
+        double baseRPM;
+        if (ballCount <= 1) {
+            baseRPM = RPM_TABLE_1_BALL[index];
+        } else if (ballCount == 2) {
+            baseRPM = RPM_TABLE_2_BALLS[index];
+        } else {
+            baseRPM = RPM_TABLE_3_BALLS[index];
+        }
         
-        return suggestedVelocity;
+        //--- Apply manual adjustment and clamp to valid range
+        double rpm = baseRPM + _velocityAdjustment;
+        rpm = Math.max(VELOCITY_FLOOR, Math.min(VELOCITY_CEILING, rpm));
+        
+        return rpm;
+    }
+    
+    //--- Legacy method - get suggested velocity for 1 ball (backward compatibility)
+    public double getSuggestedVelocity()
+    {
+        return getSuggestedVelocity(1);
     }
 
     //endregion

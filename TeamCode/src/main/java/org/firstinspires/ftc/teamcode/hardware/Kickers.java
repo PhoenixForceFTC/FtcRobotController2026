@@ -61,8 +61,11 @@ public class Kickers
     //--- Flywheel reference for velocity-based firing
     private Flywheel _flywheel = null;
 
-    //--- Camera reference for alignment-based firing
+    //--- Camera reference for alignment-based firing and distance-based velocity
     private Camera _camera = null;
+    
+    //--- Intake reference for reading ball count and colors
+    private Intake _intake = null;
     //endregion
 
     //region --- State ---
@@ -343,12 +346,29 @@ public class Kickers
                 _velocityFirePending = false;  //--- Cancel any pending velocity fire
                 _waitingForAlignment = false;  //--- Cancel any pending alignment
 
-                //--- Always use manual _targetVelocity (adjusted with Y/A buttons)
-
-                //--- Start velocity first (so isAtTarget reflects new target)
-                if (_flywheel != null && _targetVelocity > 0)
+                //--- Read ball count from intake (default to 3 if intake not available)
+                int ballCount = (_intake != null) ? _intake.getBallCount() : 3;
+                if (ballCount <= 0) ballCount = 3;  //--- Assume full if no balls detected
+                
+                //--- Get velocity from camera's distance-based lookup (uses last detected distance)
+                //--- Falls back to manual _targetVelocity only if camera has never seen a tag
+                double velocity = _targetVelocity;
+                if (_camera != null)
                 {
-                    _flywheel.setVelocity(_targetVelocity);
+                    double suggestedVelocity = _camera.getSuggestedVelocity(ballCount);
+                    if (suggestedVelocity > 0)
+                    {
+                        velocity = suggestedVelocity;
+                    }
+                }
+                
+                //--- Store the velocity we're using (for display/debugging)
+                _targetVelocity = velocity;
+
+                //--- Start flywheel at calculated velocity
+                if (_flywheel != null && velocity > 0)
+                {
+                    _flywheel.setVelocity(velocity);
                 }
 
                 //--- Start alignment if looking at target
@@ -358,7 +378,7 @@ public class Kickers
                 }
 
                 //--- Determine what we need to wait for (AFTER setting velocity)
-                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
+                boolean needVelocity = (_flywheel != null && velocity > 0 && !_flywheel.isAtTarget());
                 boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
 
                 //--- Check if we can fire immediately or need to wait
@@ -394,12 +414,25 @@ public class Kickers
             {
                 _bumperWasPressed = true;
 
-                //--- Always use manual _targetVelocity (adjusted with Y/A buttons)
-
-                //--- Start velocity first (so isAtTarget reflects new target)
-                if (_flywheel != null && _targetVelocity > 0)
+                //--- For sequence firing, use 1-ball RPM since we fire one at a time
+                //--- Uses last detected distance; falls back to manual _targetVelocity only if never seen a tag
+                double velocity = _targetVelocity;
+                if (_camera != null)
                 {
-                    _flywheel.setVelocity(_targetVelocity);
+                    double suggestedVelocity = _camera.getSuggestedVelocity(1);
+                    if (suggestedVelocity > 0)
+                    {
+                        velocity = suggestedVelocity;
+                    }
+                }
+                
+                //--- Store the velocity we're using (for display/debugging)
+                _targetVelocity = velocity;
+
+                //--- Start flywheel at calculated velocity
+                if (_flywheel != null && velocity > 0)
+                {
+                    _flywheel.setVelocity(velocity);
                 }
 
                 //--- Start alignment if looking at target
@@ -408,8 +441,14 @@ public class Kickers
                     _camera.enableAutoAlignForFiring();
                 }
 
+                //--- Also read ball colors from intake and configure kickers
+                if (_intake != null)
+                {
+                    configureBallColorsFromIntake();
+                }
+
                 //--- Determine what we need to wait for (AFTER setting velocity)
-                boolean needVelocity = (_flywheel != null && _targetVelocity > 0 && !_flywheel.isAtTarget());
+                boolean needVelocity = (_flywheel != null && velocity > 0 && !_flywheel.isAtTarget());
                 boolean needAlignment = (lookingAtTarget && _camera != null && !_camera.isAligned());
 
                 //--- Check if we can fire immediately or need to wait
@@ -653,10 +692,16 @@ public class Kickers
         return _sequence;
     }
 
-    //--- Set the camera reference (for alignment-based firing)
+    //--- Set the camera reference (for alignment-based firing and distance-based velocity)
     public void setCamera(Camera camera)
     {
         _camera = camera;
+    }
+
+    //--- Set the intake reference (for reading ball count and colors)
+    public void setIntake(Intake intake)
+    {
+        _intake = intake;
     }
 
     //--- Set the target velocity directly (called from Camera in Manual Target mode)
@@ -674,6 +719,34 @@ public class Kickers
     //endregion
 
     //region --- Private Methods ---
+
+    //--- Read ball colors from intake sensors and configure kickers
+    private void configureBallColorsFromIntake()
+    {
+        if (_intake == null) return;
+        
+        Intake.BallColor[] intakeColors = _intake.getAllShooterBallColors();
+        
+        //--- Convert Intake.BallColor to Kickers.BallColor for each position
+        for (int i = 0; i < 3; i++)
+        {
+            BallColor kickerColor = convertIntakeBallColor(intakeColors[i]);
+            setBallColor(i + 1, kickerColor);
+        }
+    }
+    
+    //--- Convert Intake.BallColor to Kickers.BallColor
+    private BallColor convertIntakeBallColor(Intake.BallColor intakeColor)
+    {
+        switch (intakeColor)
+        {
+            case GREEN:
+                return BallColor.GREEN;
+            case PURPLE:
+            default:
+                return BallColor.PURPLE;
+        }
+    }
 
     //--- Calculate the firing order based on current sequence and ball colors
     private int[] calculateFiringOrder()

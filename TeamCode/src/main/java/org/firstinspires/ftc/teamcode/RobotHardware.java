@@ -279,8 +279,11 @@ public class RobotHardware
         );
         camera.initialize();
 
-        //--- Set camera reference on kickers for alignment-based firing
+        //--- Set camera reference on kickers for alignment-based firing and distance-based velocity
         kickers.setCamera(camera);
+        
+        //--- Set intake reference on kickers for reading ball count and colors
+        kickers.setIntake(intake);
 
         //------------------------------------------------------------------------------------------
         //--- Messages
