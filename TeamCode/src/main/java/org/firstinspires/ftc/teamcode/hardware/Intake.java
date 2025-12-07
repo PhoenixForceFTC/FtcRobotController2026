@@ -18,7 +18,7 @@ public class Intake
     private static final double OUTTAKE_SPEED = 0.33;
 
     //--- Outtake Duration (in seconds)
-    private static final double OUTTAKE_DURATION = 1.0;
+    private static final double OUTTAKE_DURATION = 2.0;
 
     //--- Ball Detection Settings (per-sensor distance thresholds)
     //--- Each sensor may have different mounting distances

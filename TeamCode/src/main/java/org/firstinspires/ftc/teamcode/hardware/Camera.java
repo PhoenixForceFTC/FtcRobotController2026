@@ -130,10 +130,12 @@ public class Camera
     private static final double VELOCITY_CEILING = 4000.0;       // Absolute maximum RPM allowed
     private static final double VELOCITY_INCREMENT = 50.0;       // RPM change per button press
 
-    //--- Manual Target mode velocity presets (RPM)
-    private static final double VELOCITY_CLOSE = 2700.0;   // Y button - close shot
-    private static final double VELOCITY_MEDIUM = 2850.0;  // B button - medium shot
-    private static final double VELOCITY_LONG = 3000.0;    // A button - long shot
+    //--- Fixed distance presets for manual override (inches)
+    //--- These are used when camera isn't working or for known shooting positions
+    //--- Light pattern shows how many are locked: SHORT=1, MEDIUM=2, LONG=3 orange lights
+    public static final double FIXED_DISTANCE_SHORT = 26.0;    // Short distance preset
+    public static final double FIXED_DISTANCE_MEDIUM = 36.0;   // Medium distance preset
+    public static final double FIXED_DISTANCE_LONG = 110.0;    // Long distance preset
 
     //--- Pitch scanning constants
     private static final double PITCH_SCAN_MIN = 0.60;   // Lowest pitch (looking DOWN toward floor)
@@ -166,7 +168,7 @@ public class Camera
     public enum TargetingMode
     {
         AUTO_AIM,       // Camera auto-align: Y=lock on, A=release
-        MANUAL_TARGET   // Manual velocity presets: Y=Close, B=Medium, A=Long
+        MANUAL_TARGET   // Manual distance presets: Y=Short, B=Medium, A=Long
     }
 
     //--- Ball sequence patterns (detected from obelisk AprilTags)
@@ -176,6 +178,16 @@ public class Camera
         GPP,        // Green, Purple, Purple
         PGP,        // Purple, Green, Purple
         PPG         // Purple, Purple, Green
+    }
+
+    //--- Distance lock type for manual override
+    //--- Light pattern: SHORT=left orange, MEDIUM=left+center orange, LONG=all orange
+    public enum DistanceLockType
+    {
+        NONE,   // Camera updates distance normally
+        SHORT,  // Locked to FIXED_DISTANCE_SHORT
+        MEDIUM, // Locked to FIXED_DISTANCE_MEDIUM
+        LONG    // Locked to FIXED_DISTANCE_LONG
     }
     //endregion
 
@@ -227,6 +239,7 @@ public class Camera
     private double _lastDistanceInches = -1.0;      // Current distance (-1 if no tag visible)
     private double _storedDistanceInches = -1.0;    // Last good distance (persists when tag lost)
     private double _velocityAdjustment = 0.0;       // Manual adjustment to RPM (added to lookup value)
+    private DistanceLockType _distanceLockType = DistanceLockType.NONE;  // Distance lock state
 
     //--- Scan mode state
     private ScanMode _scanMode = ScanMode.DEMO;     // Current operating mode
@@ -363,6 +376,28 @@ public class Camera
             if (_alignmentLockEnabled || _autoAlignForFiring)
             {
                 runAlignment();
+            }
+            
+            //--- Override lights when distance is locked
+            //--- Shows orange lights to indicate lock: SHORT=1, MEDIUM=2, LONG=3 lights
+            if (_distanceLockType == DistanceLockType.SHORT)
+            {
+                //--- SHORT: left orange only
+                _lights.setLeft(Lights.Color.ORANGE);
+                _lights.setMiddle(Lights.Color.OFF);
+                _lights.setRight(Lights.Color.OFF);
+            }
+            else if (_distanceLockType == DistanceLockType.MEDIUM)
+            {
+                //--- MEDIUM: left and center orange
+                _lights.setLeft(Lights.Color.ORANGE);
+                _lights.setMiddle(Lights.Color.ORANGE);
+                _lights.setRight(Lights.Color.OFF);
+            }
+            else if (_distanceLockType == DistanceLockType.LONG)
+            {
+                //--- LONG: all three orange
+                _lights.setAll(Lights.Color.ORANGE);
             }
         }
         catch (Exception e)
@@ -759,7 +794,11 @@ public class Camera
         _lastDistanceInches = (TAG_REAL_SIZE_INCHES * HUSKY_FOCAL_LENGTH) / pixelWidth;
         
         //--- Store this as the last good distance (persists when tag is lost)
-        _storedDistanceInches = _lastDistanceInches;
+        //--- But only if distance is not locked (manual override active)
+        if (_distanceLockType == DistanceLockType.NONE)
+        {
+            _storedDistanceInches = _lastDistanceInches;
+        }
     }
 
     //--- Get the stored distance (last good reading, persists when tag lost)
@@ -799,6 +838,48 @@ public class Camera
     public void resetVelocityAdjustment()
     {
         _velocityAdjustment = 0.0;
+    }
+
+    //--- Set fixed distance for short shots and lock it
+    public void setFixedDistanceShort()
+    {
+        _storedDistanceInches = FIXED_DISTANCE_SHORT;
+        _distanceLockType = DistanceLockType.SHORT;
+        _isScanning = false;  // Stop scanning since we're using fixed distance
+    }
+
+    //--- Set fixed distance for medium shots and lock it
+    public void setFixedDistanceMedium()
+    {
+        _storedDistanceInches = FIXED_DISTANCE_MEDIUM;
+        _distanceLockType = DistanceLockType.MEDIUM;
+        _isScanning = false;  // Stop scanning since we're using fixed distance
+    }
+
+    //--- Set fixed distance for long shots and lock it
+    public void setFixedDistanceLong()
+    {
+        _storedDistanceInches = FIXED_DISTANCE_LONG;
+        _distanceLockType = DistanceLockType.LONG;
+        _isScanning = false;  // Stop scanning since we're using fixed distance
+    }
+
+    //--- Unlock distance (allow camera to update it again)
+    public void unlockDistance()
+    {
+        _distanceLockType = DistanceLockType.NONE;
+    }
+
+    //--- Check if distance is locked
+    public boolean isDistanceLocked()
+    {
+        return _distanceLockType != DistanceLockType.NONE;
+    }
+
+    //--- Get current distance lock type
+    public DistanceLockType getDistanceLockType()
+    {
+        return _distanceLockType;
     }
 
     //--- Get suggested flywheel velocity based on stored distance and ball count
@@ -1073,18 +1154,23 @@ public class Camera
         }
     }
 
-    //--- MANUAL_TARGET mode controls: Y=Close, B=Medium, A=Long
+    //--- MANUAL_TARGET mode controls: Y=Short, B=Medium, A=Long distance locks
     private void handleManualTargetControls()
     {
-        //--- Y button - Close shot velocity
+        //--- Y button - Short distance (toggle)
         if (_gamepad2.y)
         {
             if (!_yButtonPressed)
             {
                 _yButtonPressed = true;
-                if (_kickers != null)
+                if (_distanceLockType == DistanceLockType.SHORT)
                 {
-                    _kickers.setTargetVelocity(VELOCITY_CLOSE);
+                    unlockDistance();
+                    resetVelocityAdjustment();
+                }
+                else
+                {
+                    setFixedDistanceShort();
                 }
             }
         }
@@ -1093,15 +1179,20 @@ public class Camera
             _yButtonPressed = false;
         }
 
-        //--- B button - Medium shot velocity
+        //--- B button - Medium distance (toggle)
         if (_gamepad2.b)
         {
             if (!_bButtonPressed)
             {
                 _bButtonPressed = true;
-                if (_kickers != null)
+                if (_distanceLockType == DistanceLockType.MEDIUM)
                 {
-                    _kickers.setTargetVelocity(VELOCITY_MEDIUM);
+                    unlockDistance();
+                    resetVelocityAdjustment();
+                }
+                else
+                {
+                    setFixedDistanceMedium();
                 }
             }
         }
@@ -1110,15 +1201,20 @@ public class Camera
             _bButtonPressed = false;
         }
 
-        //--- A button - Long shot velocity
+        //--- A button - Long distance (toggle)
         if (_gamepad2.a)
         {
             if (!_aButtonPressed)
             {
                 _aButtonPressed = true;
-                if (_kickers != null)
+                if (_distanceLockType == DistanceLockType.LONG)
                 {
-                    _kickers.setTargetVelocity(VELOCITY_LONG);
+                    unlockDistance();
+                    resetVelocityAdjustment();
+                }
+                else
+                {
+                    setFixedDistanceLong();
                 }
             }
         }
@@ -1149,7 +1245,7 @@ public class Camera
         }
         else
         {
-            return "MANUAL (Y=Close, B=Med, A=Long)";
+            return "MANUAL (Y=Short, B=Med, A=Long)";
         }
     }
 

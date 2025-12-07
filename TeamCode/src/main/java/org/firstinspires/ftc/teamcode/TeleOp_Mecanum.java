@@ -10,54 +10,85 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 //endregion
 
 //region --- Controls ---
-//----------------------------------------------------------------------
-// Joystick 1 (gp1) -----------------------------------------------------
-//  - Left Stick        - Mecanum Drive
+//======================================================================
+// GAMEPAD 1 (Driver) 
+//======================================================================
+//
+//  MOVEMENT:
+//  - Left Stick        - Mecanum Drive (strafe/forward/back)
 //  - Right Stick       - Mecanum Rotate
 //  - Left Stick Click  - Drive Speed High/Low (Hold 1 second)
 //  - Right Stick Click - Rotate Speed High/Low (Hold 1 second)
+//  - Dpad              - Slow directional movement (Up/Down/Left/Right)
 //
-//  - Dpad Up           - Move Forward (Slow)
-//  - Dpad Down         - Move Back (Slow)
-//  - Dpad Right        - Move Right (Slow)
-//  - Dpad Left         - Move Left (Slow)
+//  SHOOTING:
+//  - Right Trigger     - Fire All Kickers
+//                        • Reads ball count from intake
+//                        • Gets RPM from distance lookup table (1/2/3 ball tables)
+//                        • Waits for flywheel velocity, then fires
+//  - Right Bumper      - Fire Kickers in Sequence
+//                        • Uses 1-ball RPM (fires one at a time)
+//                        • Reads ball colors from intake
+//                        • Fires in order based on detected sequence
 //
-//  - Right Trigger     - Fire All Kickers (waits for flywheel velocity)
-//  - Right Bumpers     - Fire Kickers in Sequence (waits for velocity between shots)
+//  INTAKE:
 //  - Left Trigger      - Intake Toggle On/Off
-//  - Left Bumpers      - Intake Outtakes for timed duration
+//  - Left Bumper       - Outtake (timed reverse)
 //
-//  - Y (▲)             - Increase Target Velocity (+50 RPM)
-//  - A (✕)             - Decrease Target Velocity (-50 RPM)
-//  - X (■)             - Set Flywheel Velocity 2000 RPM
-//  - B (○)             - Set Flywheel Velocity 3000 RPM
+//  VELOCITY / DISTANCE CONTROLS:
+//  - Y (▲)             - Increase RPM adjustment (+50, added to lookup value)
+//  - A (✕)             - Decrease RPM adjustment (-50, added to lookup value)
+//  - X (■)             - Toggle SHORT distance lock
+//                        • Press to lock (LEFT light orange), press again to unlock
+//  - B (○)             - Toggle MEDIUM distance lock
+//                        • Press to lock (LEFT+CENTER lights orange), press again to unlock
 //
-//----------------------------------------------------------------------
-// Joystick 2 (gp2) -----------------------------------------------------
-//  - Left Stick        -
-//  - Right Stick       -
-//  - Left Stick Click  - 
-//  - Right Stick Click - 
+//======================================================================
+// GAMEPAD 2 (Operator) 
+//======================================================================
 //
+//  MODE SELECTION:
 //  - Dpad Up           - Switch to AUTO-AIM mode
 //  - Dpad Down         - Switch to MANUAL TARGET mode
-//  - Dpad Right        - 
-//  - Dpad Left         - 
+//  - Dpad Left         - (available)
+//  - Dpad Right        - (available)
 //
-//  - Right Trigger     -
-//  - Right Bumpers     -
-//  - Left Trigger      -
-//  - Left Bumpers      -
+//  TRIGGERS/BUMPERS:
+//  - Right Trigger     - (available)
+//  - Right Bumper      - (available)
+//  - Left Trigger      - (available)
+//  - Left Bumper       - (available)
 //
-//  AUTO-AIM MODE (Dpad Up):
-//  - Y (▲)             - Lock on to target (auto-align)
-//  - A (✕)             - Release lock (stop auto-align)
+//  STICKS:
+//  - Left Stick        - (available)
+//  - Right Stick       - (available)
+//  - Left Stick Click  - (available)
+//  - Right Stick Click - (available)
 //
-//  MANUAL TARGET MODE (Dpad Down):
-//  - Y (▲)             - Close shot velocity (2700 RPM)
-//  - B (○)             - Medium shot velocity (2850 RPM)
-//  - A (✕)             - Long shot velocity (3000 RPM)
 //----------------------------------------------------------------------
+//  AUTO-AIM MODE (default):
+//----------------------------------------------------------------------
+//  Camera tracks target, auto-calculates velocity from distance.
+//  Robot auto-rotates to align with target when firing.
+//
+//  - Y (▲)             - Lock on to target (enable auto-align)
+//  - A (✕)             - Release lock (disable auto-align)
+//  - B (○)             - (available)
+//  - X (■)             - (available)
+//
+//----------------------------------------------------------------------
+//  MANUAL TARGET MODE:
+//----------------------------------------------------------------------
+//  For shooting without camera tracking.
+//  Use distance presets for known shooting positions.
+//  Light pattern shows lock level: 1/2/3 orange lights.
+//
+//  - Y (▲)             - Toggle SHORT distance lock (1 orange light)
+//  - B (○)             - Toggle MEDIUM distance lock (2 orange lights)
+//  - A (✕)             - Toggle LONG distance lock (3 orange lights)
+//  - X (■)             - (available)
+//
+//======================================================================
 //endregion
 
 @TeleOp(name="TeleOp", group="1")
@@ -124,7 +155,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //--- Intake
             //------------------------------------------------------------------------------------------
             _robot.intake.controlIntake();
-            _robot.intake.testColorSensors();  //--- Show color sensor values for tuning
+            //_robot.intake.testColorSensors();  //--- Show color sensor values for tuning
 
             //------------------------------------------------------------------------------------------
             //--- Kickers

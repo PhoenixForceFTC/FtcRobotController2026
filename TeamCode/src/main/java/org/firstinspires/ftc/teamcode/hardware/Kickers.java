@@ -480,13 +480,16 @@ public class Kickers
     //--- Handle velocity preset buttons on gamepad1
     private void handleVelocityPresets()
     {
-        //--- Y button - increase target velocity
+        //--- Y button - increase velocity adjustment (added to camera lookup)
         if (_gamepad1.y)
         {
             if (!_yPressed)
             {
                 _yPressed = true;
-                _targetVelocity = Math.min(VELOCITY_ADJUST_MAX, _targetVelocity + VELOCITY_ADJUST_INCREMENT);
+                if (_camera != null)
+                {
+                    _camera.increaseVelocityAdjustment();
+                }
             }
         }
         else
@@ -494,13 +497,16 @@ public class Kickers
             _yPressed = false;
         }
 
-        //--- A button - decrease target velocity
+        //--- A button - decrease velocity adjustment (added to camera lookup)
         if (_gamepad1.a)
         {
             if (!_aPressed)
             {
                 _aPressed = true;
-                _targetVelocity = Math.max(VELOCITY_ADJUST_MIN, _targetVelocity - VELOCITY_ADJUST_INCREMENT);
+                if (_camera != null)
+                {
+                    _camera.decreaseVelocityAdjustment();
+                }
             }
         }
         else
@@ -508,13 +514,26 @@ public class Kickers
             _aPressed = false;
         }
 
-        //--- B button - 3000 RPM
+        //--- B button - fixed medium distance (36") - camera override
+        //--- Toggle behavior: press to lock, press again to unlock
         if (_gamepad1.b)
         {
             if (!_bPressed)
             {
                 _bPressed = true;
-                _targetVelocity = VELOCITY_PRESET_B;
+                if (_camera != null)
+                {
+                    if (_camera.getDistanceLockType() == Camera.DistanceLockType.MEDIUM)
+                    {
+                        //--- Already locked to medium, unlock and reset
+                        _camera.unlockDistance();
+                        _camera.resetVelocityAdjustment();
+                    }
+                    else
+                    {
+                        _camera.setFixedDistanceMedium();
+                    }
+                }
             }
         }
         else
@@ -522,13 +541,26 @@ public class Kickers
             _bPressed = false;
         }
 
-        //--- X button - 2000 RPM
+        //--- X button - fixed short distance (26") - camera override
+        //--- Toggle behavior: press to lock, press again to unlock
         if (_gamepad1.x)
         {
             if (!_xPressed)
             {
                 _xPressed = true;
-                _targetVelocity = VELOCITY_PRESET_X;
+                if (_camera != null)
+                {
+                    if (_camera.getDistanceLockType() == Camera.DistanceLockType.SHORT)
+                    {
+                        //--- Already locked to short, unlock and reset
+                        _camera.unlockDistance();
+                        _camera.resetVelocityAdjustment();
+                    }
+                    else
+                    {
+                        _camera.setFixedDistanceShort();
+                    }
+                }
             }
         }
         else
@@ -536,19 +568,7 @@ public class Kickers
             _xPressed = false;
         }
 
-        //--- Left bumper - auto velocity from camera distance
-        if (_gamepad1.left_bumper)
-        {
-            if (!_leftBumperWasPressed)
-            {
-                _leftBumperWasPressed = true;
-                updateVelocityFromCamera();
-            }
-        }
-        else
-        {
-            _leftBumperWasPressed = false;
-        }
+        //--- Left bumper - no longer used for velocity (used by Intake for outtake)
     }
 
     //--- Update target velocity based on camera distance estimation
