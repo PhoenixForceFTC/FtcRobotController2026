@@ -199,6 +199,179 @@ public class AutoActions {
     }
 
     /**
+     * Wait for flywheel to reach speed, then fire kickers in sequence based on 
+     * detected ball colors and target sequence pattern.
+     * 
+     * This action:
+     * 1. Sets flywheel to specified RPM (single-ball RPM for sequence firing)
+     * 2. Waits for flywheel to reach target RPM
+     * 3. Reads ball colors from intake sensors and configures kickers
+     * 4. Sets the firing sequence from the detected BallSequence
+     * 5. Fires each kicker in the correct order, waiting for velocity recovery between shots
+     * 
+     * The sequence determines which color ball to fire first:
+     * - GPP: Fire Green first, then Purple, then Purple
+     * - PGP: Fire Purple first, then Green, then Purple
+     * - PPG: Fire Purple first, then Purple, then Green
+     */
+    public static class KickerWaitForSpeedThenFireSequence implements Action {
+        private final RobotHardware robot;
+        private final double targetRPM;
+        private final String label;
+        private final java.util.List<String> fireLog;
+        private ElapsedTime timer;
+        private ElapsedTime stableTimer;
+        private int state = 0;
+        private double timeFirstStable = -1;
+        private boolean rpmSet = false;
+        private static final double FLYWHEEL_TIMEOUT = 6.0;
+        private static final double STABLE_TIME = 0.1;
+        private static final double RPM_TOLERANCE = 75.0;
+
+        public KickerWaitForSpeedThenFireSequence(RobotHardware robot, double targetRPM) {
+            this(robot, targetRPM, null, null);
+        }
+
+        public KickerWaitForSpeedThenFireSequence(RobotHardware robot, double targetRPM, String label, java.util.List<String> fireLog) {
+            this.robot = robot;
+            this.targetRPM = targetRPM;
+            this.label = label;
+            this.fireLog = fireLog;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (timer == null) {
+                timer = new ElapsedTime();
+                stableTimer = new ElapsedTime();
+            }
+            
+            // Set flywheel RPM on first run
+            if (!rpmSet) {
+                robot.flywheel.setVelocity(targetRPM);
+                rpmSet = true;
+            }
+
+            switch (state) {
+                case 0:  // Wait for flywheel to be continuously stable
+                    robot.flywheel.run();
+                    double currentRPM = robot.flywheel.getCurrentRPM();
+                    double flywheelTarget = robot.flywheel.getTargetRPM();
+                    boolean atTarget = Math.abs(currentRPM - flywheelTarget) <= RPM_TOLERANCE;
+                    
+                    if (!atTarget) {
+                        stableTimer.reset();
+                        timeFirstStable = -1;
+                    } else if (timeFirstStable < 0) {
+                        timeFirstStable = timer.seconds();
+                    }
+                    
+                    boolean stable = atTarget && stableTimer.seconds() > STABLE_TIME;
+                    boolean timedOut = timer.seconds() > FLYWHEEL_TIMEOUT;
+                    
+                    if (stable || timedOut) {
+                        // Log the firing info
+                        double firingRPM = robot.flywheel.getCurrentRPM();
+                        double totalTime = timer.seconds();
+                        
+                        // Read ball colors from intake and configure kickers
+                        configureBallColorsFromIntake();
+                        
+                        // Set the firing sequence from detected sequence
+                        configureSequenceFromCamera();
+                        
+                        if (fireLog != null && label != null) {
+                            String reason = timedOut && !stable ? " (TIMEOUT!)" : " (stable)";
+                            String hitInfo = timeFirstStable >= 0 
+                                ? String.format(" [stable@%.2fs, fire@%.2fs]", timeFirstStable, totalTime)
+                                : String.format(" [never stable, fire@%.2fs]", totalTime);
+                            String seqInfo = String.format(" Seq:%s", robot.kickers.getSequence());
+                            fireLog.add(String.format("%s: %.0f RPM%s%s%s", label, firingRPM, reason, hitInfo, seqInfo));
+                        }
+                        
+                        // Start the sequence firing
+                        robot.kickers.fireSequence();
+                        state = 1;
+                    }
+                    telemetryPacket.put("Flywheel Target", robot.flywheel.getTargetRPM());
+                    telemetryPacket.put("Flywheel Current", robot.flywheel.getCurrentRPM());
+                    telemetryPacket.put("At Target", atTarget);
+                    telemetryPacket.put("Stable Time", stableTimer.seconds());
+                    return true;
+
+                case 1:  // Wait for sequence to complete
+                    robot.flywheel.run();  // Keep flywheel running for velocity recovery
+                    robot.kickers.run();   // Run kicker state machine
+                    
+                    if (robot.kickers.isSequenceComplete()) {
+                        state = 2;
+                        return false;  // Done
+                    }
+                    telemetryPacket.put("Sequence", "Firing...");
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+        
+        /**
+         * Read ball colors from intake sensors and configure kickers
+         */
+        private void configureBallColorsFromIntake() {
+            org.firstinspires.ftc.teamcode.hardware.Intake.BallColor[] intakeColors = 
+                robot.intake.getAllShooterBallColors();
+            
+            // Convert Intake.BallColor to Kickers.BallColor for each position
+            for (int i = 0; i < 3; i++) {
+                org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor kickerColor = 
+                    convertBallColor(intakeColors[i]);
+                robot.kickers.setBallColor(i + 1, kickerColor);
+            }
+        }
+        
+        /**
+         * Convert Intake.BallColor to Kickers.BallColor
+         */
+        private org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor convertBallColor(
+                org.firstinspires.ftc.teamcode.hardware.Intake.BallColor intakeColor) {
+            switch (intakeColor) {
+                case GREEN:
+                    return org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN;
+                case PURPLE:
+                default:
+                    return org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.PURPLE;
+            }
+        }
+        
+        /**
+         * Set the kicker firing sequence based on detected camera sequence
+         */
+        private void configureSequenceFromCamera() {
+            org.firstinspires.ftc.teamcode.hardware.Camera.BallSequence detected = 
+                robot.camera.getDetectedSequence();
+            
+            org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence kickerSequence;
+            switch (detected) {
+                case GPP:
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.GPP;
+                    break;
+                case PGP:
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.PGP;
+                    break;
+                case PPG:
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.PPG;
+                    break;
+                default:
+                    // Default to GPP if unknown
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.GPP;
+                    break;
+            }
+            robot.kickers.setSequence(kickerSequence);
+        }
+    }
+
+    /**
      * Retract all kickers to down position
      */
     public static class KickerRetractAll implements Action {
