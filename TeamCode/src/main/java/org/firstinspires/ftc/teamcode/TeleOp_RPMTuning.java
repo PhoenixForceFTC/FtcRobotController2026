@@ -445,7 +445,7 @@ public class TeleOp_RPMTuning extends LinearOpMode
         telemetry.addData("Target Distance", "%d\"", _targetDistanceInches);
         telemetry.addData("Camera Reading", cameraStatus);
         telemetry.addData("Current RPM", "%.0f", _currentRPM);
-        telemetry.addData("Flywheel Actual", "%.0f RPM", _robot.flywheel.getVelocity());
+        telemetry.addData("Flywheel Actual", "%.0f RPM", _robot.flywheel.getCurrentRPM());
         telemetry.addData("Ball Count", _robot.intake.getBallCount());
         
         if (_isMoving)
