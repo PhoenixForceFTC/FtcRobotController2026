@@ -63,7 +63,7 @@ public class Camera
     //--- Light hold time (debounce) - lights stay on this long after losing tracking
     private static final double LIGHT_HOLD_TIME = 0.5;   // Seconds to hold lights after losing tag
 
-    //--- Pre-match camera position (fixed, no scanning)
+    //--- Pre-match camera position (default, can be overridden)
     private static final double PREMATCH_YAW = 0.5;      // Yaw for pre-match (adjust as needed)
     private static final double PREMATCH_PITCH = 0.70;   // Pitch for pre-match obelisk viewing
 
@@ -87,6 +87,15 @@ public class Camera
         AUTO_AIM,       // Camera auto-align: Y=lock on, A=release
         MANUAL_TARGET   // Manual velocity presets: Y=Close, B=Medium, A=Long
     }
+
+    //--- Ball sequence patterns (detected from obelisk AprilTags)
+    public enum BallSequence
+    {
+        UNKNOWN,    // Not yet detected
+        GPP,        // Green, Purple, Purple
+        PGP,        // Purple, Green, Purple
+        PPG         // Purple, Purple, Green
+    }
     //endregion
 
     //region --- Hardware ---
@@ -106,6 +115,7 @@ public class Camera
     //region --- State ---
     private boolean _isConnected = false;
     private int _lastDetectedTag = -1;
+    private BallSequence _detectedSequence = BallSequence.UNKNOWN;
     private HuskyLens.Block[] _blocks = new HuskyLens.Block[0];
     private HuskyLens.Algorithm _currentAlgorithm = HuskyLens.Algorithm.TAG_RECOGNITION;
 
@@ -395,6 +405,7 @@ public class Camera
 
             case TAG_SEQUENCE_GPP:
                 //--- GPP sequence: set kickers to GPP, solid Green-Purple-Purple
+                _detectedSequence = BallSequence.GPP;
                 _kickers.setSequence(Kickers.Sequence.GPP);
                 _lights.setLeft(Lights.Color.GREEN);
                 _lights.setMiddle(Lights.Color.PURPLE);
@@ -403,6 +414,7 @@ public class Camera
 
             case TAG_SEQUENCE_PGP:
                 //--- PGP sequence: set kickers to PGP, solid Purple-Green-Purple
+                _detectedSequence = BallSequence.PGP;
                 _kickers.setSequence(Kickers.Sequence.PGP);
                 _lights.setLeft(Lights.Color.PURPLE);
                 _lights.setMiddle(Lights.Color.GREEN);
@@ -411,6 +423,7 @@ public class Camera
 
             case TAG_SEQUENCE_PPG:
                 //--- PPG sequence: set kickers to PPG, solid Purple-Purple-Green
+                _detectedSequence = BallSequence.PPG;
                 _kickers.setSequence(Kickers.Sequence.PPG);
                 _lights.setLeft(Lights.Color.PURPLE);
                 _lights.setMiddle(Lights.Color.PURPLE);
@@ -524,14 +537,69 @@ public class Camera
     }
 
     //--- Set the pre-match camera position (for viewing obelisk)
-    //--- Call this during init to adjust where camera looks for sequence tags
+    //--- Call this during init to point camera at obelisk for sequence detection
+    //--- Yaw: 0.0 = full right, 0.5 = center, 1.0 = full left
+    //--- Pitch: 0.0 = down, 0.5 = level, 1.0 = up
     public void setPreMatchPosition(double yaw, double pitch)
     {
-        if (_scanMode == ScanMode.PRE_MATCH)
+        setScanMode(ScanMode.PRE_MATCH);
+        setPosition(yaw, pitch);
+        _currentScanPitch = pitch;
+        _detectedSequence = BallSequence.UNKNOWN;  // Reset detection
+    }
+
+    //--- Get the detected ball sequence (GPP, PGP, PPG, or UNKNOWN)
+    public BallSequence getDetectedSequence()
+    {
+        return _detectedSequence;
+    }
+
+    //--- Check if a sequence has been detected
+    public boolean isSequenceDetected()
+    {
+        return _detectedSequence != BallSequence.UNKNOWN;
+    }
+
+    //--- Reset detected sequence (call before starting new detection)
+    public void resetDetectedSequence()
+    {
+        _detectedSequence = BallSequence.UNKNOWN;
+    }
+
+    //--- Run pre-match detection and update lights to show detected sequence
+    //--- Call this in your init loop. Returns the detected sequence.
+    //--- Lights will show GPP/PGP/PPG pattern once detected.
+    public BallSequence runPreMatchDetection()
+    {
+        //--- Run camera to detect AprilTags
+        run();
+        
+        //--- If sequence detected, update lights to show the pattern
+        if (isSequenceDetected())
         {
-            setPosition(yaw, pitch);
-            _currentScanPitch = pitch;
+            switch (_detectedSequence)
+            {
+                case GPP:
+                    _lights.setLeft(Lights.Color.GREEN);
+                    _lights.setMiddle(Lights.Color.PURPLE);
+                    _lights.setRight(Lights.Color.PURPLE);
+                    break;
+                case PGP:
+                    _lights.setLeft(Lights.Color.PURPLE);
+                    _lights.setMiddle(Lights.Color.GREEN);
+                    _lights.setRight(Lights.Color.PURPLE);
+                    break;
+                case PPG:
+                    _lights.setLeft(Lights.Color.PURPLE);
+                    _lights.setMiddle(Lights.Color.PURPLE);
+                    _lights.setRight(Lights.Color.GREEN);
+                    break;
+                default:
+                    break;
+            }
         }
+        
+        return _detectedSequence;
     }
 
     //endregion

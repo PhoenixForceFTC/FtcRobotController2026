@@ -7,6 +7,7 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.MecanumDrive;
 import org.firstinspires.ftc.teamcode.RobotHardware;
+import org.firstinspires.ftc.teamcode.hardware.Camera;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,14 @@ public class Auto_Close extends LinearOpMode {
     
     //--- Flywheel speed for shooting
     private static final double SHOOT_RPM = 2600.0;
+
+    //--- Pre-match camera positions for sequence detection (tune based on starting position)
+    //--- Yaw: 0.0 = full right, 0.5 = center, 1.0 = full left
+    //--- Pitch: 0.0 = down, 0.5 = level, 1.0 = up
+    private static final double PREMATCH_BLUE_YAW = 0.35;    // Blue: look left toward obelisk
+    private static final double PREMATCH_BLUE_PITCH = 0.70;
+    private static final double PREMATCH_RED_YAW = 0.65;     // Red: look right toward obelisk
+    private static final double PREMATCH_RED_PITCH = 0.70;
     
     //--- Log of firing speeds for each phase
     private List<String> fireLog = new ArrayList<>();
@@ -48,6 +57,9 @@ public class Auto_Close extends LinearOpMode {
     //--- Alliance selection
     private enum Alliance { BLUE, RED }
     private Alliance selectedAlliance = Alliance.BLUE;  // Default to blue
+
+    //--- Detected ball sequence
+    private Camera.BallSequence detectedSequence = Camera.BallSequence.UNKNOWN;
 
     @Override
     public void runOpMode() throws InterruptedException 
@@ -59,26 +71,45 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         //--- Alliance Selection Loop (during init, before start)
         //========================================================================
+        //--- Set initial camera position for Blue alliance
+        robot.camera.setPreMatchPosition(PREMATCH_BLUE_YAW, PREMATCH_BLUE_PITCH);
+        
         while (!isStarted() && !isStopRequested()) 
         {
             //--- Check for alliance selection buttons on gamepad2
             if (gamepad2.x) 
             {
-                selectedAlliance = Alliance.BLUE;
-                robot.lights.setAllBlue();
+                if (selectedAlliance != Alliance.BLUE)
+                {
+                    selectedAlliance = Alliance.BLUE;
+                    robot.lights.setAllBlue();
+                    robot.camera.setPreMatchPosition(PREMATCH_BLUE_YAW, PREMATCH_BLUE_PITCH);
+                }
             } 
             else if (gamepad2.b) 
             {
-                selectedAlliance = Alliance.RED;
-                robot.lights.setAllRed();
+                if (selectedAlliance != Alliance.RED)
+                {
+                    selectedAlliance = Alliance.RED;
+                    robot.lights.setAllRed();
+                    robot.camera.setPreMatchPosition(PREMATCH_RED_YAW, PREMATCH_RED_PITCH);
+                }
             }
 
-            //--- Display current selection
+            //--- Run pre-match detection (updates lights when sequence detected)
+            detectedSequence = robot.camera.runPreMatchDetection();
+
+            //--- Display current selection and detection status
             telemetry.addData("=== ALLIANCE SELECTION ===", "");
             telemetry.addData("Press X", "BLUE Alliance");
             telemetry.addData("Press B", "RED Alliance");
             telemetry.addLine("");
             telemetry.addData(">>> SELECTED", selectedAlliance);
+            telemetry.addLine("");
+            telemetry.addData("=== SEQUENCE DETECTION ===", "");
+            telemetry.addData("Camera Connected", robot.camera.isConnected());
+            telemetry.addData("Last Tag", robot.camera.getLastDetectedTag());
+            telemetry.addData(">>> SEQUENCE", detectedSequence);
             telemetry.addLine("");
             telemetry.addData("Status", "Waiting for START...");
             telemetry.update();
@@ -101,6 +132,7 @@ public class Auto_Close extends LinearOpMode {
         //--- Final telemetry with firing log
         telemetry.addData("Status", "Autonomous Complete!");
         telemetry.addData("Alliance", selectedAlliance);
+        telemetry.addData("Sequence", detectedSequence);
         telemetry.addLine("=== FIRING LOG ===");
         for (String entry : fireLog) 
         {
