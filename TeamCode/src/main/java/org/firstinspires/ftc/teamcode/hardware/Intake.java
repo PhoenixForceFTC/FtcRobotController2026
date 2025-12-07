@@ -488,10 +488,66 @@ public class Intake
         return _outtakeActive;
     }
 
-    //--- Get detected ball colors
+    //--- Get detected ball colors by sensor position
     public BallColor getLeftBallColor() { return _leftBallColor; }
     public BallColor getCenterBallColor() { return _centerBallColor; }
     public BallColor getRightBallColor() { return _rightBallColor; }
+
+    //--- Get detected ball colors by shooter position (1, 2, 3)
+    //--- Shooter 1 = Left sensor, Shooter 2 = Center sensor, Shooter 3 = Right sensor
+    public BallColor getShooterBallColor(int shooterNumber)
+    {
+        switch (shooterNumber)
+        {
+            case 1:
+                return _leftBallColor;
+            case 2:
+                return _centerBallColor;
+            case 3:
+                return _rightBallColor;
+            default:
+                return BallColor.NONE;
+        }
+    }
+
+    //--- Get all shooter ball colors as an array [shooter1, shooter2, shooter3]
+    public BallColor[] getAllShooterBallColors()
+    {
+        return new BallColor[] { _leftBallColor, _centerBallColor, _rightBallColor };
+    }
+
+    //--- Check if a specific shooter has a ball (any color)
+    public boolean shooterHasBall(int shooterNumber)
+    {
+        BallColor color = getShooterBallColor(shooterNumber);
+        return color != BallColor.NONE;
+    }
+
+    //--- Check if a specific shooter has a specific color ball
+    public boolean shooterHasColor(int shooterNumber, BallColor targetColor)
+    {
+        return getShooterBallColor(shooterNumber) == targetColor;
+    }
+
+    //--- Count how many shooters have balls
+    public int getBallCount()
+    {
+        int count = 0;
+        if (_leftBallColor != BallColor.NONE) count++;
+        if (_centerBallColor != BallColor.NONE) count++;
+        if (_rightBallColor != BallColor.NONE) count++;
+        return count;
+    }
+
+    //--- Count how many shooters have a specific color ball
+    public int getColorCount(BallColor targetColor)
+    {
+        int count = 0;
+        if (_leftBallColor == targetColor) count++;
+        if (_centerBallColor == targetColor) count++;
+        if (_rightBallColor == targetColor) count++;
+        return count;
+    }
 
     //endregion
 
