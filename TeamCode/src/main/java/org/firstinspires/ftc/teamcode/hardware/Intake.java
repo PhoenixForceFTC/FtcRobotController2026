@@ -165,6 +165,15 @@ public class Intake
         {
             detectBalls();
             updateLights();
+            
+            //--- Auto-stop: when 3 balls detected, outtake briefly then stop
+            if (_intakeOn && !_outtakeActive && getBallCount() >= 3)
+            {
+                _outtakeActive = true;
+                _intakeOn = false;
+                _outtakeTimer.reset();
+                outtake();
+            }
         }
     }
     //endregion
