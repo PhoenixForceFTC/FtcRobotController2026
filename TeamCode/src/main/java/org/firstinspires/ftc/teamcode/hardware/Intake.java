@@ -22,12 +22,18 @@ public class Intake
 
     //--- Ball Detection Settings (per-sensor distance thresholds)
     //--- Each sensor may have different mounting distances
-    private static final double LEFT_DISTANCE_THRESHOLD_MM = 80.0;    // Left sensor: ball if < 80mm
-    private static final double CENTER_DISTANCE_THRESHOLD_MM = 95.0;  // Center sensor: ball if < 95mm
-    private static final double RIGHT_DISTANCE_THRESHOLD_MM = 80.0;   // Right sensor: TBD
+    //--- Ball detected when distance < threshold (ball is closer than empty)
+    //--- Thresholds set ~2-3mm BELOW measured empty min values
+    //--- Left empty: min 77.7, max 82.8 → threshold 75mm (ball must read < 75)
+    //--- Center empty: min 90.8, max 100.4 → threshold 88mm (ball must read < 88)
+    //--- Right empty: min 92.8, max 98.9 → threshold 90mm (ball must read < 90)
+    private static final double LEFT_DISTANCE_THRESHOLD_MM = 75.0;
+    private static final double CENTER_DISTANCE_THRESHOLD_MM = 88.0;
+    private static final double RIGHT_DISTANCE_THRESHOLD_MM = 90.0;
 
     //--- Averaging settings
     private static final int AVERAGING_SAMPLES = 5;  // Number of samples to average
+    private static final int MINMAX_BUFFER_SIZE = 100;  // Rolling buffer for min/max tracking
 
     //--- Color Detection Thresholds (REV Color Sensor V3)
     //--- Using RGB ratios for reliable detection
@@ -103,6 +109,13 @@ public class Intake
     private double _leftAvgDist, _leftAvgR, _leftAvgG, _leftAvgB;
     private double _centerAvgDist, _centerAvgR, _centerAvgG, _centerAvgB;
     private double _rightAvgDist, _rightAvgR, _rightAvgG, _rightAvgB;
+
+    //--- Min/Max distance tracking (rolling buffer for last 100 readings)
+    private double[] _leftMinMaxBuffer = new double[MINMAX_BUFFER_SIZE];
+    private double[] _centerMinMaxBuffer = new double[MINMAX_BUFFER_SIZE];
+    private double[] _rightMinMaxBuffer = new double[MINMAX_BUFFER_SIZE];
+    private int _leftMinMaxIndex = 0, _centerMinMaxIndex = 0, _rightMinMaxIndex = 0;
+    private int _leftMinMaxCount = 0, _centerMinMaxCount = 0, _rightMinMaxCount = 0;
 
     //--- Sticky color flags (for telemetry)
     private boolean _leftIsSticky = false;
@@ -299,6 +312,27 @@ public class Intake
         if (sensorName.equals("left")) _leftIsSticky = isSticky;
         else if (sensorName.equals("center")) _centerIsSticky = isSticky;
         else if (sensorName.equals("right")) _rightIsSticky = isSticky;
+    }
+
+    //--- Calculate min and max from a rolling buffer
+    //--- Returns [min, max] array
+    private double[] getMinMax(double[] buffer, int count)
+    {
+        if (count == 0)
+        {
+            return new double[] { 0, 0 };
+        }
+        
+        double min = Double.MAX_VALUE;
+        double max = 0;
+        
+        for (int i = 0; i < count; i++)
+        {
+            if (buffer[i] < min) min = buffer[i];
+            if (buffer[i] > max) max = buffer[i];
+        }
+        
+        return new double[] { min, max };
     }
 
     //--- Calculate hue (0-360) from RGB values
@@ -590,8 +624,16 @@ public class Intake
             _telemetry.addData("  Avg RGB", "R:%.0f G:%.0f B:%.0f", _leftAvgR, _leftAvgG, _leftAvgB);
             _telemetry.addData("  G/R ratio", "%.2f (GREEN if >%.1f)", gToR, GREEN_RATIO_THRESHOLD);
             _telemetry.addData("  B/G ratio", "%.2f (PURPLE if >%.2f & G/R<%.1f)", bToG, PURPLE_BG_THRESHOLD, PURPLE_GR_MAX);
-            _telemetry.addData("  Distance", "%.1f mm (avg %.1f)", dist, _leftAvgDist);
-            _telemetry.addData("  Ball", "%s%s", _leftBallColor, _leftIsSticky ? " (STICKY)" : "");
+            
+            //--- Update rolling min/max buffer
+            if (_leftAvgDist > 0 && _leftAvgDist < 200) { // Ignore invalid readings
+                _leftMinMaxBuffer[_leftMinMaxIndex] = _leftAvgDist;
+                _leftMinMaxIndex = (_leftMinMaxIndex + 1) % MINMAX_BUFFER_SIZE;
+                if (_leftMinMaxCount < MINMAX_BUFFER_SIZE) _leftMinMaxCount++;
+            }
+            double[] leftMinMax = getMinMax(_leftMinMaxBuffer, _leftMinMaxCount);
+            _telemetry.addData("  Distance", "%.1f mm [avg %.1f min:%.1f max:%.1f]", dist, _leftAvgDist, leftMinMax[0], leftMinMax[1]);
+            _telemetry.addData("  Ball", "%s%s", _leftBallColor, _leftIsSticky ? " (STICKY)" : "");;
         }
         else
         {
@@ -614,8 +656,16 @@ public class Intake
             _telemetry.addData("  Avg RGB", "R:%.0f G:%.0f B:%.0f", _centerAvgR, _centerAvgG, _centerAvgB);
             _telemetry.addData("  G/R ratio", "%.2f (GREEN if >%.1f)", gToR, GREEN_RATIO_THRESHOLD);
             _telemetry.addData("  B/G ratio", "%.2f (PURPLE if >%.2f & G/R<%.1f)", bToG, PURPLE_BG_THRESHOLD, PURPLE_GR_MAX);
-            _telemetry.addData("  Distance", "%.1f mm (avg %.1f)", dist, _centerAvgDist);
-            _telemetry.addData("  Ball", "%s%s", _centerBallColor, _centerIsSticky ? " (STICKY)" : "");
+            
+            //--- Update rolling min/max buffer
+            if (_centerAvgDist > 0 && _centerAvgDist < 200) { // Ignore invalid readings
+                _centerMinMaxBuffer[_centerMinMaxIndex] = _centerAvgDist;
+                _centerMinMaxIndex = (_centerMinMaxIndex + 1) % MINMAX_BUFFER_SIZE;
+                if (_centerMinMaxCount < MINMAX_BUFFER_SIZE) _centerMinMaxCount++;
+            }
+            double[] centerMinMax = getMinMax(_centerMinMaxBuffer, _centerMinMaxCount);
+            _telemetry.addData("  Distance", "%.1f mm [avg %.1f min:%.1f max:%.1f]", dist, _centerAvgDist, centerMinMax[0], centerMinMax[1]);
+            _telemetry.addData("  Ball", "%s%s", _centerBallColor, _centerIsSticky ? " (STICKY)" : "");;
         }
         else
         {
@@ -638,7 +688,15 @@ public class Intake
             _telemetry.addData("  Avg RGB", "R:%.0f G:%.0f B:%.0f", _rightAvgR, _rightAvgG, _rightAvgB);
             _telemetry.addData("  G/R ratio", "%.2f (GREEN if >%.1f)", gToR, GREEN_RATIO_THRESHOLD);
             _telemetry.addData("  B/G ratio", "%.2f (PURPLE if >%.2f & G/R<%.1f)", bToG, PURPLE_BG_THRESHOLD, PURPLE_GR_MAX);
-            _telemetry.addData("  Distance", "%.1f mm (avg %.1f)", dist, _rightAvgDist);
+            
+            //--- Update rolling min/max buffer
+            if (_rightAvgDist > 0 && _rightAvgDist < 200) { // Ignore invalid readings
+                _rightMinMaxBuffer[_rightMinMaxIndex] = _rightAvgDist;
+                _rightMinMaxIndex = (_rightMinMaxIndex + 1) % MINMAX_BUFFER_SIZE;
+                if (_rightMinMaxCount < MINMAX_BUFFER_SIZE) _rightMinMaxCount++;
+            }
+            double[] rightMinMax = getMinMax(_rightMinMaxBuffer, _rightMinMaxCount);
+            _telemetry.addData("  Distance", "%.1f mm [avg %.1f min:%.1f max:%.1f]", dist, _rightAvgDist, rightMinMax[0], rightMinMax[1]);
             _telemetry.addData("  Ball", "%s%s", _rightBallColor, _rightIsSticky ? " (STICKY)" : "");
         }
         else
