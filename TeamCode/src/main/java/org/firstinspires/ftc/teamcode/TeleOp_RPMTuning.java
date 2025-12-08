@@ -25,6 +25,12 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 //  - Y (▲)             - Increase RPM by 50
 //  - A (✕)             - Decrease RPM by 50
 //
+//  INTAKE:
+//  - Left Trigger      - Toggle intake on/off
+//                        • Auto-stops after 3 balls detected
+//                        • Outtakes briefly then stops
+//  - Left Bumper       - Outtake for 2 seconds
+//
 //  FIRING:
 //  - Right Trigger     - Fire balls (uses intake ball count: 1, 2, or 3)
 //                        • Shows exact RPM used when firing
@@ -161,6 +167,9 @@ public class TeleOp_RPMTuning extends LinearOpMode
             handleFiring();
             handleRecording();
             handleDisplayToggle();
+            
+            //--- Handle intake (left trigger toggle, auto-stop on 3 balls)
+            _robot.intake.controlIntake();
             
             //--- Update movement if active
             updateMovement();
