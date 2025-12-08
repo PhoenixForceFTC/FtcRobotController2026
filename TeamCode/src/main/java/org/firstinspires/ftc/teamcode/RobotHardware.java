@@ -59,7 +59,7 @@ Servo
 I2C
 0 - pinpoint (Pinpoint Odometry)
 1 - cc (Color Sensor Center)
-2 - 
+2 - cr (Color Sensor Right)
 3 -
 */
 //endregion
@@ -112,6 +112,7 @@ public class RobotHardware
     public HuskyLens huskyLens = null;
     public ColorSensor colorSensorLeft = null;
     public ColorSensor colorSensorCenter = null;
+    public ColorSensor colorSensorRight = null;
 
     //------------------------------------------------------------------------------------------
     //--- Custom Hardware Classes
@@ -198,6 +199,7 @@ public class RobotHardware
         //--- Color Sensors
         colorSensorLeft = _opMode.hardwareMap.get(ColorSensor.class, "cl");
         colorSensorCenter = _opMode.hardwareMap.get(ColorSensor.class, "cc");
+        colorSensorRight = _opMode.hardwareMap.get(ColorSensor.class, "cr");
 
         //------------------------------------------------------------------------------------------
         //--- Hardware Constructors
@@ -237,7 +239,7 @@ public class RobotHardware
         lights.initialize();
 
         //--- Connect color sensors and lights to intake for ball detection
-        intake.setColorSensors(colorSensorLeft, colorSensorCenter, null);  // Right sensor not yet installed
+        intake.setColorSensors(colorSensorLeft, colorSensorCenter, colorSensorRight);
         intake.setLights(lights);
 
         flywheel = new Flywheel(
