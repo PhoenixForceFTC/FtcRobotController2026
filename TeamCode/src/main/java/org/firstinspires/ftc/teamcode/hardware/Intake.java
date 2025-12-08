@@ -452,11 +452,12 @@ public class Intake
     }
 
     //--- Restore lights to default state (call when intake stops)
+    //--- Sets lights OFF so camera can control them based on detected targets
     public void restoreLights()
     {
         if (_lights != null)
         {
-            _lights.initialize();  // Reset to default colors
+            _lights.setAllOff();  // Turn off so camera can show target colors
         }
     }
 
