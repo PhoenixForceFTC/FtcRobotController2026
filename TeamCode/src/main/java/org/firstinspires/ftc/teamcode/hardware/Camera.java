@@ -138,7 +138,7 @@ public class Camera
     public static final double FIXED_DISTANCE_LONG = 110.0;    // Long distance preset
 
     //--- Pitch scanning constants
-    private static final double PITCH_SCAN_MIN = 0.60;   // Lowest pitch (looking DOWN toward floor)
+    private static final double PITCH_SCAN_MIN = 0.65;   // Lowest pitch (looking DOWN toward floor)
     private static final double PITCH_SCAN_MAX = 0.75;   // Highest pitch (looking UP toward ceiling)
     private static final double PITCH_SCAN_STEP = 0.01;  // Step size for scanning (smaller = smoother)
     private static final double PITCH_DEADBAND = 30;     // Pixels from Y center to consider "centered"
@@ -1058,6 +1058,8 @@ public class Camera
     public void enableAutoAlignForFiring()
     {
         _autoAlignForFiring = true;
+        _isAligned = false;  // Reset alignment state so we re-align each shot
+        _isSettling = false; // Reset settling state
         _drive.setBrakeMode(true);
     }
 
