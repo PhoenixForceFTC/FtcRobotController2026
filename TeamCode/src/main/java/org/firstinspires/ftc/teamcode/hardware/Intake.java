@@ -19,6 +19,13 @@ public class Intake
 
     //--- Outtake Duration (in seconds)
     private static final double OUTTAKE_DURATION = 2.0;
+    
+    //--- Settle delay before outtake (let balls settle after 3 detected)
+    private static final double SETTLE_DELAY_SECONDS = 0.5;
+    
+    //--- Consecutive detection cycles required before triggering auto-stop
+    //--- Prevents false triggers when balls roll across sensors
+    private static final int CONSECUTIVE_FULL_DETECTIONS_REQUIRED = 10;
 
     //--- Ball Detection Settings (per-sensor distance thresholds)
     //--- Each sensor may have different mounting distances
@@ -79,7 +86,10 @@ public class Intake
     private boolean _intakeOn = false;
     private boolean _triggerWasPressed = false;
     private boolean _outtakeActive = false;
+    private boolean _settleActive = false;  // Waiting for balls to settle before outtake
     private ElapsedTime _outtakeTimer = new ElapsedTime();
+    private ElapsedTime _settleTimer = new ElapsedTime();
+    private int _consecutiveFullDetections = 0;  // Counter for stable 3-ball detection
 
     //--- Ball detection state
     private BallColor _leftBallColor = BallColor.NONE;
@@ -147,16 +157,11 @@ public class Intake
     {
         _intakeOn = false;
         _outtakeActive = false;
+        _settleActive = false;
         stop();
         
         //--- Initialize distance buffers with high values to prevent false ball detection
-        //--- on first trigger pull (zeros would average down and trigger auto-outtake)
-        for (int i = 0; i < AVERAGING_SAMPLES; i++)
-        {
-            _leftDistBuffer[i] = 999.0;
-            _centerDistBuffer[i] = 999.0;
-            _rightDistBuffer[i] = 999.0;
-        }
+        resetDistanceBuffers();
     }
 
     //--- Set color sensors (call after construction)
@@ -183,18 +188,45 @@ public class Intake
     public void run()
     {
         //--- Only detect balls and update lights while intaking or outtaking
-        if (isIntakeOn() || isOuttakeActive())
+        if (isIntakeOn() || isOuttakeActive() || _settleActive)
         {
             detectBalls();
             updateLights();
             
-            //--- Auto-stop: when 3 balls detected, outtake briefly then stop
-            if (_intakeOn && !_outtakeActive && getBallCount() >= 3)
+            //--- Handle settle delay (keep intake running, then outtake)
+            if (_settleActive)
             {
-                _outtakeActive = true;
-                _intakeOn = false;
-                _outtakeTimer.reset();
-                outtake();
+                if (_settleTimer.seconds() >= SETTLE_DELAY_SECONDS)
+                {
+                    //--- Settle complete, now outtake
+                    _settleActive = false;
+                    _outtakeActive = true;
+                    _intakeOn = false;
+                    _outtakeTimer.reset();
+                    outtake();
+                }
+                //--- Still settling, keep intake running
+            }
+            //--- Auto-stop: when 3 balls detected consistently, start settle delay
+            //--- Require multiple consecutive cycles to prevent false triggers from rolling balls
+            else if (_intakeOn && !_outtakeActive)
+            {
+                if (getBallCount() >= 3)
+                {
+                    _consecutiveFullDetections++;
+                    if (_consecutiveFullDetections >= CONSECUTIVE_FULL_DETECTIONS_REQUIRED)
+                    {
+                        _settleActive = true;
+                        _settleTimer.reset();
+                        _consecutiveFullDetections = 0;
+                        //--- Keep intake running during settle
+                    }
+                }
+                else
+                {
+                    //--- Reset counter if we don't have 3 balls
+                    _consecutiveFullDetections = 0;
+                }
             }
         }
     }
@@ -492,9 +524,26 @@ public class Intake
 
     //region --- Public Methods ---
 
+    //--- Reset distance buffers to prevent false ball detection
+    private void resetDistanceBuffers()
+    {
+        for (int i = 0; i < AVERAGING_SAMPLES; i++)
+        {
+            _leftDistBuffer[i] = 999.0;
+            _centerDistBuffer[i] = 999.0;
+            _rightDistBuffer[i] = 999.0;
+        }
+        _leftBufferIndex = 0;
+        _centerBufferIndex = 0;
+        _rightBufferIndex = 0;
+        _consecutiveFullDetections = 0;  // Reset 3-ball detection counter
+    }
+
     //--- Run intake at configured speed
     public void intake()
     {
+        //--- Reset buffers to prevent false ball detection from stale data
+        resetDistanceBuffers();
         _intakeOn = true;
         _motorIntake.setPower(INTAKE_SPEED);
     }
@@ -502,6 +551,8 @@ public class Intake
     //--- Run intake at custom speed
     public void intake(double power)
     {
+        //--- Reset buffers to prevent false ball detection from stale data
+        resetDistanceBuffers();
         _intakeOn = true;
         _motorIntake.setPower(Math.abs(power));
     }

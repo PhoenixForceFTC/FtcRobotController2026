@@ -142,6 +142,9 @@ public class TeleOp_Mecanum extends LinearOpMode
         //------------------------------------------------------------------------------------------
         _robot.intake.initialize();
         _robot.lights.initialize();
+        
+        //--- Start flywheel at idle speed so first shot is accurate
+        _robot.flywheel.setVelocity(2600);
 
         //------------------------------------------------------------------------------------------
         //--- Camera Mode (switch from PRE_MATCH to TELEOP)
@@ -178,7 +181,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             //--- Kickers
             //------------------------------------------------------------------------------------------
             _robot.kickers.controlKickers();
-            _robot.kickers.getTelemetry();
+            //_robot.kickers.getTelemetry();
             //_robot.kickers.fineTunePositions();
 
             //------------------------------------------------------------------------------------------
