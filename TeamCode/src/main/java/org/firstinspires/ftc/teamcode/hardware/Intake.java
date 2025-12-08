@@ -148,6 +148,15 @@ public class Intake
         _intakeOn = false;
         _outtakeActive = false;
         stop();
+        
+        //--- Initialize distance buffers with high values to prevent false ball detection
+        //--- on first trigger pull (zeros would average down and trigger auto-outtake)
+        for (int i = 0; i < AVERAGING_SAMPLES; i++)
+        {
+            _leftDistBuffer[i] = 999.0;
+            _centerDistBuffer[i] = 999.0;
+            _rightDistBuffer[i] = 999.0;
+        }
     }
 
     //--- Set color sensors (call after construction)
