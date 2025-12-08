@@ -50,6 +50,11 @@ public class Intake
     private static final double GREEN_RATIO_THRESHOLD = 2.5;   // G/R must exceed this for green
     private static final double PURPLE_BG_THRESHOLD = 0.85;    // B/G must exceed this for purple
     private static final double PURPLE_GR_MAX = 1.8;           // G/R must be below this for purple
+
+    //--- Distance-based unknown detection toggle
+    //--- When false, only color ratios are used (no UNKNOWN state from distance check)
+    //--- When true, balls detected by distance but not matching color thresholds show as UNKNOWN
+    private static final boolean USE_DISTANCE_FOR_UNKNOWNS = false;
     //endregion
 
     //region --- Enums ---
@@ -343,9 +348,11 @@ public class Intake
             return previousColor;  // Keep the last good color
         }
 
-        //--- No previous good color, show UNKNOWN (red light)
+        //--- No previous good color
+        //--- If using distance for unknowns, show UNKNOWN (red light)
+        //--- Otherwise, treat as no ball (NONE) - only trust color detection
         setStickyFlag(sensorName, false);
-        return BallColor.UNKNOWN;
+        return USE_DISTANCE_FOR_UNKNOWNS ? BallColor.UNKNOWN : BallColor.NONE;
     }
 
     private void setStickyFlag(String sensorName, boolean isSticky)
