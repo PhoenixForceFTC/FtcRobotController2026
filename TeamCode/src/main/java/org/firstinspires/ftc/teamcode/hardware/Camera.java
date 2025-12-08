@@ -30,8 +30,8 @@ public class Camera
     private static final int SCREEN_CENTER_Y = 120;  // 240 / 2
     private static final int ALIGN_DEADBAND = 20;    // Pixels from center to consider "aligned"
     private static final int ALIGN_SLOWZONE = 60;    // Pixels from center to start slowing down
-    private static final double ALIGN_SPEED_MIN = 0.20; // 0.08;  // Minimum rotation speed (must overcome friction)
-    private static final double ALIGN_SPEED_MAX = 0.50; // 0.25;  // Maximum rotation speed
+    private static final double ALIGN_SPEED_MIN = 0.18; // 0.10 0.20 0.08;  // Minimum rotation speed (must overcome friction)
+    private static final double ALIGN_SPEED_MAX = 0.25; // 0.50 0.25;  // Maximum rotation speed
     private static final double ALIGN_SETTLE_TIME = 0.15; // Seconds to wait after reaching deadband
 
     //--- Distance estimation constants
@@ -139,7 +139,7 @@ public class Camera
 
     //--- Pitch scanning constants
     private static final double PITCH_SCAN_MIN = 0.65;   // Lowest pitch (looking DOWN toward floor)
-    private static final double PITCH_SCAN_MAX = 0.75;   // Highest pitch (looking UP toward ceiling)
+    private static final double PITCH_SCAN_MAX = 0.8;   // Highest pitch (looking UP toward ceiling)
     private static final double PITCH_SCAN_STEP = 0.01;  // Step size for scanning (smaller = smoother)
     private static final double PITCH_DEADBAND = 30;     // Pixels from Y center to consider "centered"
 
@@ -349,11 +349,18 @@ public class Camera
                 //--- Adjust pitch to keep tag centered vertically
                 adjustPitchToTrack(targetBlock);
 
-                //--- Only process if it's a new tag (prevent repeated triggers)
+                //--- Process tag (set lights, detect sequence, etc.)
+                //--- Only trigger sequence detection once per tag, but always update target lights
                 if (detectedId != _lastProcessedTag)
                 {
                     _lastProcessedTag = detectedId;
                     processAprilTag(detectedId);
+                }
+                else
+                {
+                    //--- Already processed this tag, but still update target lights
+                    //--- (in case something else like intake turned them off)
+                    updateTargetLights(detectedId);
                 }
             }
             else
@@ -569,6 +576,22 @@ public class Camera
                 //--- Red target: solid red lights
                 _lights.setAll(Lights.Color.RED);
                 break;
+        }
+    }
+
+    //--- Update lights for target tags only (blue/red) without re-triggering sequence detection
+    //--- Called every loop to ensure lights stay on even if something else turned them off
+    private void updateTargetLights(int tagId)
+    {
+        switch (tagId)
+        {
+            case TAG_BLUE_TARGET:
+                _lights.setAll(Lights.Color.BLUE);
+                break;
+            case TAG_RED_TARGET:
+                _lights.setAll(Lights.Color.RED);
+                break;
+            //--- Don't update sequence lights here - they should only be set once on detection
         }
     }
     //endregion
