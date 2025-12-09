@@ -450,9 +450,11 @@ public class TeleOp_RPMTuning extends LinearOpMode
         //--- Current state
         double cameraDistance = _robot.camera.getDistanceInches();
         String cameraStatus = (cameraDistance > 0) ? String.format("%.1f\"", cameraDistance) : "NO TAG";
+        String storedDistance = _robot.camera.getStoredDistanceFormatted();
         
         telemetry.addData("Target Distance", "%d\"", _targetDistanceInches);
         telemetry.addData("Camera Reading", cameraStatus);
+        telemetry.addData("Last Distance", storedDistance);
         telemetry.addData("Current RPM", "%.0f", _currentRPM);
         telemetry.addData("Flywheel Actual", "%.0f RPM", _robot.flywheel.getCurrentRPM());
         telemetry.addData("Ball Count", _robot.intake.getBallCount());
