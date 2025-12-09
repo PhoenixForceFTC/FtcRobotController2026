@@ -68,7 +68,7 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
 //                        • Fires 3 balls at LONG distance
 //  - Right Bumper      - (available)
 //  - Left Trigger      - (available)
-//  - Left Bumper       - (available)
+//  - Left Bumper       - Toggle Kickstand Up/Down
 //
 //  STICKS:
 //  - Left Stick        - (available)
@@ -194,6 +194,11 @@ public class TeleOp_Mecanum extends LinearOpMode
             //------------------------------------------------------------------------------------------
             _robot.camera.handleTargetingControls();  //--- gp2: Dpad Up/Down=mode, Y/B/A=actions
             //_robot.camera.fineTuneCameraPos();
+
+            //------------------------------------------------------------------------------------------
+            //--- Kickstand
+            //------------------------------------------------------------------------------------------
+            _robot.kickstand.controlKickstand();  //--- gp2: Left Bumper=toggle up/down
 
             //------------------------------------------------------------------------------------------
             //--- Gamepad 2 Right Trigger - Auto-Fire Sequence (RoadRunner controlled)

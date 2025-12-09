@@ -12,6 +12,7 @@ import org.firstinspires.ftc.teamcode.hardware.Drive;
 import org.firstinspires.ftc.teamcode.hardware.Flywheel;
 import org.firstinspires.ftc.teamcode.hardware.Intake;
 import org.firstinspires.ftc.teamcode.hardware.Kickers;
+import org.firstinspires.ftc.teamcode.hardware.Kickstand;
 import org.firstinspires.ftc.teamcode.hardware.Lights;
 //endregion
 
@@ -120,6 +121,7 @@ public class RobotHardware
     public Intake intake;
     public Drive drive;
     public Kickers kickers;
+    public Kickstand kickstand;
     public Lights lights;
     public Flywheel flywheel;
     public Camera camera;
@@ -253,6 +255,17 @@ public class RobotHardware
         );
         flywheel.initialize();
 
+        kickstand = new Kickstand(
+                motorKickstand,
+                _opMode.gamepad1,
+                _opMode.gamepad2,
+                _opMode.telemetry,
+                robotVersion,
+                SHOW_INFO
+        );
+        kickstand.initialize();
+        kickstand.setFlywheel(flywheel);
+
         kickers = new Kickers(
                 servoKickerLeft,
                 servoKickerMiddle,
@@ -303,6 +316,7 @@ public class RobotHardware
         intake.run();
         lights.run();
         kickers.run();
+        kickstand.run();
         flywheel.run();
         camera.run();
     }
