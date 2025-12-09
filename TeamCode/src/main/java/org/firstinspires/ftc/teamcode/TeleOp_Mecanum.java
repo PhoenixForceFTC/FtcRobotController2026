@@ -165,6 +165,10 @@ public class TeleOp_Mecanum extends LinearOpMode
             //--- Start Telemetry Display
             //------------------------------------------------------------------------------------------
             telemetry.addData("STATUS", "Run Time: " + _runtime.toString());
+            telemetry.addData("Cam", "%s @ %.0f/%.0f RPM", 
+                    _robot.camera.getStoredDistanceFormatted(),
+                    _robot.flywheel.getCurrentRPM(),
+                    _robot.camera.getSuggestedVelocity(_robot.intake.getBallCount()));
 
             //------------------------------------------------------------------------------------------
             //--- Drive
