@@ -5,6 +5,8 @@ import com.qualcomm.hardware.dfrobot.HuskyLens;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.ColorSensor;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.hardware.Camera;
@@ -178,6 +180,14 @@ public class RobotHardware
         motorFlyRight.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         motorFlyRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorFlyRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
+        //--- Flywheel PIDF Tuning (reduce overshoot)
+        //--- Default goBILDA 6000 RPM values are P=10, I=3, D=0, F=0
+        //--- Lower P and add D to reduce overshoot, F helps with feedforward
+        //--- P=5 (less aggressive), I=0.5 (minimal integral), D=2 (dampen overshoot), F=12 (feedforward)
+        PIDFCoefficients flywheelPIDF = new PIDFCoefficients(5, 0.5, 2, 12);
+        ((DcMotorEx) motorFlyLeft).setVelocityPIDFCoefficients(flywheelPIDF.p, flywheelPIDF.i, flywheelPIDF.d, flywheelPIDF.f);
+        ((DcMotorEx) motorFlyRight).setVelocityPIDFCoefficients(flywheelPIDF.p, flywheelPIDF.i, flywheelPIDF.d, flywheelPIDF.f);
 
         //------------------------------------------------------------------------------------------
         //--- Servo Config
