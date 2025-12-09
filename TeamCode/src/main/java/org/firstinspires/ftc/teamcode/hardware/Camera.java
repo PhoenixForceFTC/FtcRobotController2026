@@ -1022,6 +1022,7 @@ public class Camera
     //--- Get suggested flywheel velocity based on stored distance and ball count
     //--- Uses stored distance so velocity is stable even if tag is momentarily lost
     //--- Uses lookup table based on ball count (1, 2, or 3 balls)
+    //--- For unmeasured distances (values <= 100), interpolates between nearest measured values
     //--- @param ballCount Number of balls to fire (1-3)
     //--- @return Suggested RPM, or -1 if no distance reading
     public double getSuggestedVelocity(int ballCount)
@@ -1029,25 +1030,94 @@ public class Camera
         //--- Use stored distance (persists when tag lost)
         if (_storedDistanceInches < 0) return -1.0;
         
-        //--- Convert distance to array index (0-119 for 1-120 inches)
-        int index = (int) Math.round(_storedDistanceInches) - 1;
-        index = Math.max(0, Math.min(119, index));  // Clamp to valid range
-        
         //--- Select appropriate table based on ball count
-        double baseRPM;
+        double[] table;
         if (ballCount <= 1) {
-            baseRPM = RPM_TABLE_1_BALL[index];
+            table = RPM_TABLE_1_BALL;
         } else if (ballCount == 2) {
-            baseRPM = RPM_TABLE_2_BALLS[index];
+            table = RPM_TABLE_2_BALLS;
         } else {
-            baseRPM = RPM_TABLE_3_BALLS[index];
+            table = RPM_TABLE_3_BALLS;
         }
+        
+        //--- Get interpolated RPM for the distance
+        double baseRPM = interpolateRPM(table, _storedDistanceInches);
         
         //--- Apply manual adjustment and clamp to valid range
         double rpm = baseRPM + _velocityAdjustment;
         rpm = Math.max(VELOCITY_FLOOR, Math.min(VELOCITY_CEILING, rpm));
         
         return rpm;
+    }
+    
+    //--- Interpolate RPM from table using linear interpolation between measured values
+    //--- Values > 100 are considered "measured", values <= 100 are placeholders
+    //--- @param table The RPM lookup table (120 entries, index 0 = 1 inch)
+    //--- @param distanceInches The distance to look up
+    //--- @return Interpolated RPM value
+    private double interpolateRPM(double[] table, double distanceInches)
+    {
+        //--- Clamp distance to valid range (1-120 inches)
+        distanceInches = Math.max(1.0, Math.min(120.0, distanceInches));
+        
+        //--- Find the two nearest measured values (values > 100)
+        int targetIndex = (int) Math.round(distanceInches) - 1;  // 0-indexed
+        
+        //--- Check if we have a direct measured value at this distance
+        if (table[targetIndex] > 100)
+        {
+            return table[targetIndex];
+        }
+        
+        //--- Find nearest measured value BELOW this distance
+        int lowerIndex = -1;
+        double lowerRPM = 0;
+        for (int i = targetIndex - 1; i >= 0; i--)
+        {
+            if (table[i] > 100)
+            {
+                lowerIndex = i;
+                lowerRPM = table[i];
+                break;
+            }
+        }
+        
+        //--- Find nearest measured value ABOVE this distance
+        int upperIndex = -1;
+        double upperRPM = 0;
+        for (int i = targetIndex + 1; i < table.length; i++)
+        {
+            if (table[i] > 100)
+            {
+                upperIndex = i;
+                upperRPM = table[i];
+                break;
+            }
+        }
+        
+        //--- Handle edge cases
+        if (lowerIndex < 0 && upperIndex < 0)
+        {
+            //--- No measured values in table at all, return default
+            return VELOCITY_FLOOR;
+        }
+        else if (lowerIndex < 0)
+        {
+            //--- No lower value, use upper value (extrapolate flat)
+            return upperRPM;
+        }
+        else if (upperIndex < 0)
+        {
+            //--- No upper value, use lower value (extrapolate flat)
+            return lowerRPM;
+        }
+        
+        //--- Linear interpolation between lower and upper measured values
+        //--- Formula: rpm = lowerRPM + (upperRPM - lowerRPM) * (targetIndex - lowerIndex) / (upperIndex - lowerIndex)
+        double fraction = (double)(targetIndex - lowerIndex) / (double)(upperIndex - lowerIndex);
+        double interpolatedRPM = lowerRPM + (upperRPM - lowerRPM) * fraction;
+        
+        return interpolatedRPM;
     }
     
     //--- Legacy method - get suggested velocity for 1 ball (backward compatibility)
