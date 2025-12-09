@@ -168,7 +168,7 @@ public class TeleOp_Mecanum extends LinearOpMode
             telemetry.addData("Cam", "%s @ %.0f/%.0f RPM", 
                     _robot.camera.getStoredDistanceFormatted(),
                     _robot.flywheel.getCurrentRPM(),
-                    _robot.camera.getSuggestedVelocity(_robot.intake.getBallCount()));
+                    _robot.flywheel.getTargetRPM());
 
             //------------------------------------------------------------------------------------------
             //--- Drive
@@ -189,8 +189,13 @@ public class TeleOp_Mecanum extends LinearOpMode
             //_robot.kickers.fineTunePositions();
 
             //------------------------------------------------------------------------------------------
-            //--- Flywheel
+            //--- Flywheel - Auto-adjust to suggested velocity based on distance and ball count
             //------------------------------------------------------------------------------------------
+            double suggestedRPM = _robot.camera.getSuggestedVelocity(_robot.intake.getBallCount());
+            if (suggestedRPM > 0)
+            {
+                _robot.flywheel.setVelocity(suggestedRPM);
+            }
             //_robot.flywheel.testVelocities();
 
             //------------------------------------------------------------------------------------------

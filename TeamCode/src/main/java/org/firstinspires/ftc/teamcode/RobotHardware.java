@@ -181,11 +181,10 @@ public class RobotHardware
         motorFlyRight.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         motorFlyRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
-        //--- Flywheel PIDF Tuning (reduce overshoot)
+        //--- Flywheel PIDF Tuning
         //--- Default goBILDA 6000 RPM values are P=10, I=3, D=0, F=0
-        //--- Lower P and add D to reduce overshoot, F helps with feedforward
-        //--- P=5 (less aggressive), I=0.5 (minimal integral), D=2 (dampen overshoot), F=12 (feedforward)
-        PIDFCoefficients flywheelPIDF = new PIDFCoefficients(5, 0.5, 2, 12);
+        //--- P=10 (responsive), I=1 (moderate), D=2 (light damping), F=0 (no feedforward)
+        PIDFCoefficients flywheelPIDF = new PIDFCoefficients(10, 1, 2, 0);
         ((DcMotorEx) motorFlyLeft).setVelocityPIDFCoefficients(flywheelPIDF.p, flywheelPIDF.i, flywheelPIDF.d, flywheelPIDF.f);
         ((DcMotorEx) motorFlyRight).setVelocityPIDFCoefficients(flywheelPIDF.p, flywheelPIDF.i, flywheelPIDF.d, flywheelPIDF.f);
 
