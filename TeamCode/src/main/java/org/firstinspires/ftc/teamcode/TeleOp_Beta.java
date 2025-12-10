@@ -101,12 +101,15 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
 //
 
 //--- TODO manual fire for each of the kickers - left, center, right
+//--- TODO when we use the kickstand, stop flywheel and anything else
+//--- TODO check the sequential firing in auto-aim
+//--- TODO see about not having kickstand bounce
 
 //======================================================================
 //endregion
 
 @TeleOp(name="TeleOp - Beta", group="1")
-public class TeleOp_Mecanum extends LinearOpMode
+public class TeleOp_Beta extends LinearOpMode
 {
     //------------------------------------------------------------------------------------------
     // Variables
@@ -116,9 +119,14 @@ public class TeleOp_Mecanum extends LinearOpMode
     
     //--- Auto-fire sequence state
     private boolean _gp2RightTriggerPressed = false;
+    private boolean _gp2LeftTriggerPressed = false;
     
     //--- RPM for auto-fire (uses LONG distance lookup)
     private static final double AUTO_FIRE_RPM = 3800.0;  // RPM for 110" distance
+    
+    //--- Turn angles for auto-fire sequences
+    private static final double TURN_RIGHT_ANGLE = 154.0;  // Degrees to turn right
+    private static final double TURN_LEFT_ANGLE = 235.0;   // Degrees to turn left
 
     //------------------------------------------------------------------------------------------
     //--- OpMode
@@ -212,19 +220,34 @@ public class TeleOp_Mecanum extends LinearOpMode
             _robot.kickstand.controlKickstand();  //--- gp2: Left Bumper=toggle up/down
 
             //------------------------------------------------------------------------------------------
-            //--- Gamepad 2 Right Trigger - Auto-Fire Sequence (RoadRunner controlled)
+            //--- Gamepad 2 Triggers - Auto-Fire Sequences (RoadRunner controlled)
             //------------------------------------------------------------------------------------------
+            //--- Right Trigger: Turn RIGHT and fire
             if (gamepad2.right_trigger > 0.5)
             {
                 if (!_gp2RightTriggerPressed)
                 {
                     _gp2RightTriggerPressed = true;
-                    runAutoFireSequence();
+                    runAutoFireSequence(TURN_RIGHT_ANGLE);
                 }
             }
             else
             {
                 _gp2RightTriggerPressed = false;
+            }
+            
+            //--- Left Trigger: Turn LEFT and fire
+            if (gamepad2.left_trigger > 0.5)
+            {
+                if (!_gp2LeftTriggerPressed)
+                {
+                    _gp2LeftTriggerPressed = true;
+                    runAutoFireSequence(TURN_LEFT_ANGLE);
+                }
+            }
+            else
+            {
+                _gp2LeftTriggerPressed = false;
             }
 
             //------------------------------------------------------------------------------------------
@@ -242,10 +265,11 @@ public class TeleOp_Mecanum extends LinearOpMode
 
     //------------------------------------------------------------------------------------------
     //--- Auto-Fire Sequence (RoadRunner controlled)
-    //--- Triggered by gamepad2 right trigger
-    //--- Sets position to (0,0) heading 180°, moves forward 3", rotates to 235°, fires 3 balls
+    //--- Triggered by gamepad2 triggers
+    //--- Sets position to (0,0) heading 180°, rotates to target angle, fires all balls
+    //--- @param turnAngle - the heading to rotate to (e.g., 235° for right, 125° for left)
     //------------------------------------------------------------------------------------------
-    private void runAutoFireSequence()
+    private void runAutoFireSequence(double turnAngle)
     {
         //--- Lock distance to LONG for this shot
         _robot.camera.setFixedDistanceLong();
@@ -257,13 +281,15 @@ public class TeleOp_Mecanum extends LinearOpMode
         Pose2d startPose = pose(0, 0, 180);
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
         
-        //--- Run the sequence: move forward 3", rotate to 235°, fire all 3 balls
+        //--- Run the sequence: spin up flywheel, rotate to target angle, fire all balls
         Actions.runBlocking(
             drive.actionBuilder(startPose)
                 //--- Start flywheel
                 .stopAndAdd(new AutoActions.FlywheelSetSpeed(_robot, AUTO_FIRE_RPM))
-                //--- Move forward 3" and rotate to 235°
-                .strafeToSplineHeading(pos(0, 3), degreeHeading(235))
+                //--- Wait 2 seconds for flywheel to spin up
+                .waitSeconds(2.0)
+                //--- Rotate to target angle
+                .turnTo(degreeHeading(turnAngle))
                 //--- Wait for flywheel and fire all 3 balls
                 .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireAll(_robot, AUTO_FIRE_RPM, AUTO_FIRE_RPM, AUTO_FIRE_RPM))
                 .build()
