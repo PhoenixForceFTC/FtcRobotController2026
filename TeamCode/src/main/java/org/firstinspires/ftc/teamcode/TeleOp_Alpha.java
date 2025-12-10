@@ -88,6 +88,9 @@ public class TeleOp_Alpha extends LinearOpMode
                     _robot.camera.getStoredDistanceFormatted(),
                     _robot.flywheel.getCurrentRPM(),
                     _robot.flywheel.getTargetRPM());
+            telemetry.addData("Pattern", "%s (%s)", 
+                    _robot.kickers.getSequence(),
+                    _robot.camera.isSequenceDetected() ? "Detected" : "Default");
 
             //------------------------------------------------------------------------------------------
             //--- Drive

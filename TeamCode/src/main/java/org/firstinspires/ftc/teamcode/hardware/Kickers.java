@@ -102,6 +102,10 @@ public class Kickers
     //--- Alignment-based firing state
     private boolean _waitingForAlignment = false;       //--- Waiting for alignment before firing
     private boolean _alignmentFireAll = false;          //--- true = fire all, false = fire sequence
+    
+    //--- Waiting timeout (fire anyway if waiting too long)
+    private static final double WAITING_TIMEOUT = 3.0;  //--- Max seconds to wait for velocity/alignment
+    private ElapsedTime _waitingTimer = new ElapsedTime();
 
     //--- Input debouncing
     private boolean _triggerWasPressed = false;
@@ -185,6 +189,25 @@ public class Kickers
         //--- Handle velocity-based firing (waiting for velocity before firing)
         if (_velocityFirePending && _waitingForVelocity)
         {
+            //--- Check for timeout
+            if (_waitingTimer.seconds() >= WAITING_TIMEOUT)
+            {
+                //--- Timeout reached - fire anyway
+                _waitingForVelocity = false;
+                _waitingForAlignment = false;
+                if (_velocityFireAll)
+                {
+                    fireAll();
+                    if (_camera != null) _camera.disableAutoAlignForFiring();
+                }
+                else
+                {
+                    fireSequence();
+                }
+                _velocityFirePending = false;
+                return;  //--- Skip normal waiting logic
+            }
+            
             if (_flywheel != null && _flywheel.isAtTarget())
             {
                 _waitingForVelocity = false;
@@ -217,6 +240,25 @@ public class Kickers
         //--- Handle alignment-based firing (waiting for alignment before firing)
         if (_waitingForAlignment && _camera != null)
         {
+            //--- Check for timeout
+            if (_waitingTimer.seconds() >= WAITING_TIMEOUT)
+            {
+                //--- Timeout reached - fire anyway
+                _waitingForAlignment = false;
+                _waitingForVelocity = false;
+                _velocityFirePending = false;
+                if (_alignmentFireAll)
+                {
+                    fireAll();
+                    _camera.disableAutoAlignForFiring();
+                }
+                else
+                {
+                    fireSequence();
+                }
+                return;  //--- Skip normal waiting logic
+            }
+            
             if (_camera.isAligned())
             {
                 _waitingForAlignment = false;
@@ -405,6 +447,8 @@ public class Kickers
                 }
                 else
                 {
+                    //--- Start waiting timer
+                    _waitingTimer.reset();
                     _velocityFirePending = needVelocity;
                     _velocityFireAll = true;
                     _waitingForVelocity = needVelocity;
@@ -419,12 +463,17 @@ public class Kickers
         }
 
         //--- Right bumper - fire in sequence (detect press, not hold)
-        //--- Only starts if no sequence is already in progress
+        //--- Also cancels any pending state from a previous attempt
         if (_gamepad1.right_bumper)
         {
-            if (!_bumperWasPressed && !_sequenceFiring && !_velocityFirePending && !_waitingForAlignment)
+            if (!_bumperWasPressed)
             {
                 _bumperWasPressed = true;
+                
+                //--- Cancel any pending states from previous attempts
+                _sequenceFiring = false;
+                _velocityFirePending = false;
+                _waitingForAlignment = false;
 
                 //--- For sequence firing, use 1-ball RPM since we fire one at a time
                 //--- Uses last detected distance; falls back to manual _targetVelocity only if never seen a tag
@@ -470,6 +519,8 @@ public class Kickers
                 }
                 else
                 {
+                    //--- Start waiting timer
+                    _waitingTimer.reset();
                     _velocityFirePending = needVelocity;
                     _velocityFireAll = false;
                     _waitingForVelocity = needVelocity;

@@ -208,6 +208,7 @@ public class RobotHardware
 
         servoCameraYaw = _opMode.hardwareMap.get(Servo.class, "yaw");
         servoCameraPitch = _opMode.hardwareMap.get(Servo.class, "pitch");
+        servoCameraYaw.setDirection(Servo.Direction.REVERSE);
 
         servoLightLeft = _opMode.hardwareMap.get(Servo.class, "ltl");
         servoLightMiddle = _opMode.hardwareMap.get(Servo.class, "ltm");

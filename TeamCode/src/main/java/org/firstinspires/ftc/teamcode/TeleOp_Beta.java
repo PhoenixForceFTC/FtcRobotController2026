@@ -83,7 +83,7 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
 //  Robot auto-rotates to align with target when firing.
 //
 //  - Y (▲)             - Lock on to target (enable auto-align)
-//  - A (✕)             - Release lock (disable auto-align)
+//  - A (✕)            - Release lock (disable auto-align)
 //  - B (○)             - (available)
 //  - X (■)             - (available)
 //
@@ -179,6 +179,9 @@ public class TeleOp_Beta extends LinearOpMode
                     _robot.camera.getStoredDistanceFormatted(),
                     _robot.flywheel.getCurrentRPM(),
                     _robot.flywheel.getTargetRPM());
+            telemetry.addData("Pattern", "%s (%s)", 
+                    _robot.kickers.getSequence(),
+                    _robot.camera.isSequenceDetected() ? "Detected" : "Default");
 
             //------------------------------------------------------------------------------------------
             //--- Drive
