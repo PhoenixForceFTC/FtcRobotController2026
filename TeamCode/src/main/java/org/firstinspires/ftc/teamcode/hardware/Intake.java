@@ -85,6 +85,9 @@ public class Intake
 
     //--- Lights reference for ball indication
     private Lights _lights = null;
+    
+    //--- Kickstand reference (to check if lights are being used for kickstand)
+    private Kickstand _kickstand = null;
     //endregion
 
     //region --- State ---
@@ -186,6 +189,12 @@ public class Intake
     public void setLights(Lights lights)
     {
         _lights = lights;
+    }
+    
+    //--- Set kickstand reference (to check if kickstand is using lights)
+    public void setKickstand(Kickstand kickstand)
+    {
+        _kickstand = kickstand;
     }
     //endregion
 
@@ -428,6 +437,12 @@ public class Intake
     private void updateLights()
     {
         if (_lights == null)
+        {
+            return;
+        }
+        
+        //--- Don't update lights if kickstand is down (kickstand uses lights)
+        if (_kickstand != null && _kickstand.getTargetPosition() == Kickstand.Position.DOWN)
         {
             return;
         }

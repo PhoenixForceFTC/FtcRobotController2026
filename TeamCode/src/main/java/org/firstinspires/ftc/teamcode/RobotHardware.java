@@ -284,7 +284,11 @@ public class RobotHardware
         kickstand.initialize();
         kickstand.setFlywheel(flywheel);
         kickstand.setIntake(intake);
+        kickstand.setLights(lights);
         //--- Camera reference set after camera is created (below)
+        
+        //--- Set kickstand reference on intake (so intake knows not to update lights when kickstand is down)
+        intake.setKickstand(kickstand);
 
         kickers = new Kickers(
                 servoKickerLeft,
@@ -322,9 +326,6 @@ public class RobotHardware
         
         //--- Set camera reference on kickstand for pausing scanning
         kickstand.setCamera(camera);
-        
-        //--- Set lights reference on kickstand for kickstand status lights
-        kickstand.setLights(lights);
 
         //------------------------------------------------------------------------------------------
         //--- Robot-Specific Configuration

@@ -128,7 +128,7 @@ public class TeleOp_Beta extends LinearOpMode
     
     //--- Turn angles for auto-fire sequences
     private static final double TURN_RIGHT_ANGLE = 154.0;  // Degrees to turn right
-    private static final double TURN_LEFT_ANGLE = 235.0;   // Degrees to turn left
+    private static final double TURN_LEFT_ANGLE = 206.0;   // Degrees to turn left
 
     //------------------------------------------------------------------------------------------
     //--- OpMode
@@ -202,11 +202,12 @@ public class TeleOp_Beta extends LinearOpMode
 
             //------------------------------------------------------------------------------------------
             //--- Flywheel - Auto-adjust to suggested velocity based on distance and ball count
+            //--- getSuggestedVelocity returns: >0 for valid RPM, 0 when paused, -1 if no distance
             //------------------------------------------------------------------------------------------
             double suggestedRPM = _robot.camera.getSuggestedVelocity(_robot.intake.getBallCount());
-            if (suggestedRPM > 0)
+            if (suggestedRPM >= 0)
             {
-                _robot.flywheel.setVelocity(suggestedRPM);
+                _robot.flywheel.setVelocity(suggestedRPM);  // 0 = stop when paused
             }
             //_robot.flywheel.testVelocities();
 

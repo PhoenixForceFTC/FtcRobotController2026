@@ -109,11 +109,12 @@ public class TeleOp_Alpha extends LinearOpMode
 
             //------------------------------------------------------------------------------------------
             //--- Flywheel - Auto-adjust to suggested velocity based on distance and ball count
+            //--- getSuggestedVelocity returns: >0 for valid RPM, 0 when paused, -1 if no distance
             //------------------------------------------------------------------------------------------
             double suggestedRPM = _robot.camera.getSuggestedVelocity(_robot.intake.getBallCount());
-            if (suggestedRPM > 0)
+            if (suggestedRPM >= 0)
             {
-                _robot.flywheel.setVelocity(suggestedRPM);
+                _robot.flywheel.setVelocity(suggestedRPM);  // 0 = stop when paused
             }
             //_robot.flywheel.testVelocities();
 

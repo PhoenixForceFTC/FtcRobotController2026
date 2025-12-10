@@ -263,6 +263,7 @@ public class Camera
     //--- Scan mode state
     private ScanMode _scanMode = ScanMode.DEMO;     // Current operating mode
     private boolean _isScanning = false;            // Currently scanning for tags
+    private boolean _paused = false;                  // Paused (lights controlled by kickstand)
     private boolean _scanDirectionUp = true;        // Scan direction (true = increasing pitch)
     private double _currentScanPitch = PITCH_CENTER; // Current pitch during scan
     private ElapsedTime _scanTimer = new ElapsedTime(); // Timer for scan steps
@@ -322,6 +323,12 @@ public class Camera
     //region --- Run (call this in your main loop) ---
     public void run()
     {
+        //--- Skip all processing if paused (kickstand is using lights)
+        if (_paused)
+        {
+            return;
+        }
+        
         //--- Try to read even if knock failed (sometimes knock fails but camera works)
         try
         {
@@ -698,12 +705,14 @@ public class Camera
     public void pauseScanning()
     {
         _isScanning = false;
+        _paused = true;
     }
 
     //--- Resume scanning (call when returning to normal operation)
     public void resumeScanning()
     {
         _isScanning = true;
+        _paused = false;
     }
 
     //--- Set the pre-match camera position (for viewing obelisk)
@@ -1036,9 +1045,12 @@ public class Camera
     //--- Uses lookup table based on ball count (1, 2, or 3 balls)
     //--- For unmeasured distances (values <= 100), interpolates between nearest measured values
     //--- @param ballCount Number of balls to fire (1-3)
-    //--- @return Suggested RPM, or -1 if no distance reading
+    //--- @return Suggested RPM, or 0 if paused (kickstand down), or -1 if no distance reading
     public double getSuggestedVelocity(int ballCount)
     {
+        //--- Return 0 if paused (kickstand is down)
+        if (_paused) return 0.0;
+        
         //--- Use stored distance (persists when tag lost)
         if (_storedDistanceInches < 0) return -1.0;
         
