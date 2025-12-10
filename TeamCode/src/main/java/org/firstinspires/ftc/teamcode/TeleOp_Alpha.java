@@ -34,8 +34,8 @@ public class TeleOp_Alpha extends LinearOpMode
     private static final double AUTO_FIRE_RPM = 3800.0;  // RPM for 110" distance
     
     //--- Turn angles for auto-fire sequences
-    private static final double TURN_RIGHT_ANGLE = 235.0;  // Degrees to turn right
-    private static final double TURN_LEFT_ANGLE = 125.0;   // Degrees to turn left
+    private static final double TURN_RIGHT_ANGLE = 154.0;  // Degrees to turn right
+    private static final double TURN_LEFT_ANGLE = 206.0;   // Degrees to turn left
 
     //------------------------------------------------------------------------------------------
     //--- OpMode

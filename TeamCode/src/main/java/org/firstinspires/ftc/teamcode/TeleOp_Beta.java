@@ -104,6 +104,8 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
 //--- TODO when we use the kickstand, stop flywheel and anything else
 //--- TODO check the sequential firing in auto-aim
 //--- TODO see about not having kickstand bounce
+//--- TODO - easier way to show intake is on (tape?)
+//--- TODO look at RPM for far shot
 
 //======================================================================
 //endregion

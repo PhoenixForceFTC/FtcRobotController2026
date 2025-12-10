@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.hardware;
 
 //region --- Imports ---
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.teamcode.hardware.Flywheel;
@@ -10,8 +12,9 @@ import org.firstinspires.ftc.teamcode.hardware.Flywheel;
 public class Kickstand
 {
     //region --- Constants ---
-    //--- Motor speed (very slow for 30 RPM motor)
-    private static final double MOTOR_SPEED = 0.1;
+    //--- Motor speed for RUN_TO_POSITION mode (max power allowed)
+    private static final double MOTOR_SPEED = 0.3;  // Low speed for smooth movement
+    private static final double HOLDING_POWER = 0.15;  // Lower power when holding position
 
     //--- Encoder positions (tune these after testing)
     //--- Position 0 = starting position (encoder reset on init)
@@ -20,7 +23,7 @@ public class Kickstand
     private static final int POSITION_UP = 500;       // Up position (tune this value)
 
     //--- Position tolerance (how close to target before we consider it "there")
-    private static final int POSITION_TOLERANCE = 20;
+    private static final int POSITION_TOLERANCE = 10;  // Tighter tolerance for RUN_TO_POSITION
     //endregion
 
     //region --- Enums ---
@@ -73,9 +76,24 @@ public class Kickstand
     {
         //--- Reset encoder to 0 at current position (should be DOWN)
         _motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        _motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        
+        //--- Configure PIDF for smooth position holding
+        //--- Lower P = less aggressive, less oscillation
+        //--- Higher D = more damping, reduces overshoot
+        //--- F is feedforward, not typically used for position
+        if (_motor instanceof DcMotorEx)
+        {
+            DcMotorEx motorEx = (DcMotorEx) _motor;
+            //--- Tune these values to reduce bobbing:
+            //--- P=5 (gentle), I=0 (no integral windup), D=2 (damping), F=0
+            motorEx.setPositionPIDFCoefficients(5.0);
+        }
+        
+        //--- Set initial target position before switching to RUN_TO_POSITION
+        _motor.setTargetPosition(POSITION_DOWN);
+        _motor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         _motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        _motor.setPower(0);
+        _motor.setPower(HOLDING_POWER);  // Set power - motor will hold position
         
         _targetPosition = Position.DOWN;
         _isMoving = false;
@@ -94,30 +112,23 @@ public class Kickstand
         //--- Get current position
         int currentPosition = _motor.getCurrentPosition();
         int targetEncoder = getTargetEncoder();
+        int error = Math.abs(targetEncoder - currentPosition);
 
-        //--- Check if we've reached the target position
-        int error = targetEncoder - currentPosition;
+        //--- Update target position (RUN_TO_POSITION handles the movement)
+        _motor.setTargetPosition(targetEncoder);
         
-        if (Math.abs(error) <= POSITION_TOLERANCE)
+        //--- Adjust power based on whether we're moving or holding
+        if (error > POSITION_TOLERANCE)
         {
-            //--- At target, stop motor
-            _motor.setPower(0);
-            _isMoving = false;
+            //--- Moving to target - use higher power
+            _motor.setPower(MOTOR_SPEED);
+            _isMoving = true;
         }
         else
         {
-            //--- Move toward target
-            _isMoving = true;
-            if (error > 0)
-            {
-                //--- Need to move positive direction
-                _motor.setPower(MOTOR_SPEED);
-            }
-            else
-            {
-                //--- Need to move negative direction
-                _motor.setPower(-MOTOR_SPEED);
-            }
+            //--- At target - use lower holding power to reduce oscillation
+            _motor.setPower(HOLDING_POWER);
+            _isMoving = false;
         }
     }
     //endregion
