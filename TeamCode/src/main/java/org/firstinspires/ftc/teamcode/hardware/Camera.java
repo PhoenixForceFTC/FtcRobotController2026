@@ -694,6 +694,18 @@ public class Camera
         return _isScanning;
     }
 
+    //--- Pause scanning (call when kickstand is deployed, etc.)
+    public void pauseScanning()
+    {
+        _isScanning = false;
+    }
+
+    //--- Resume scanning (call when returning to normal operation)
+    public void resumeScanning()
+    {
+        _isScanning = true;
+    }
+
     //--- Set the pre-match camera position (for viewing obelisk)
     //--- Call this during init to point camera at obelisk for sequence detection
     //--- Yaw: 0.0 = full right, 0.5 = center, 1.0 = full left

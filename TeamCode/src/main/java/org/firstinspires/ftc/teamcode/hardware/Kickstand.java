@@ -48,8 +48,11 @@ public class Kickstand
     private boolean _leftBumperPressed = false;  // Debounce for gp2 left bumper
     private boolean _isMoving = false;
     
-    //--- Flywheel reference (to turn off when kickstand is used)
+    //--- Flywheel and Intake references (to turn off when kickstand is used)
     private Flywheel _flywheel = null;
+    private Intake _intake = null;
+    private Camera _camera = null;
+    private Lights _lights = null;
     //endregion
 
     //region --- Constructor ---
@@ -104,6 +107,24 @@ public class Kickstand
     {
         _flywheel = flywheel;
     }
+    
+    //--- Set intake reference (call after construction)
+    public void setIntake(Intake intake)
+    {
+        _intake = intake;
+    }
+    
+    //--- Set camera reference (call after construction)
+    public void setCamera(Camera camera)
+    {
+        _camera = camera;
+    }
+    
+    //--- Set lights reference (call after construction)
+    public void setLights(Lights lights)
+    {
+        _lights = lights;
+    }
     //endregion
 
     //region --- Run (call this in your main loop) ---
@@ -157,19 +178,35 @@ public class Kickstand
     //--- Toggle between UP and DOWN positions
     public void toggle()
     {
-        //--- Turn off flywheel when using kickstand
+        //--- Turn off flywheel, intake, and camera scanning when using kickstand
         if (_flywheel != null)
         {
             _flywheel.stop();
+        }
+        if (_intake != null)
+        {
+            _intake.stop();
+        }
+        if (_camera != null)
+        {
+            _camera.pauseScanning();
         }
         
         if (_targetPosition == Position.DOWN)
         {
             _targetPosition = Position.UP;
+            //--- Kickstand going UP (off) - other methods will control lights
         }
         else
         {
             _targetPosition = Position.DOWN;
+            //--- Kickstand going DOWN (on) - show yellow/orange/red pattern
+            if (_lights != null)
+            {
+                _lights.setLeft(Lights.Color.YELLOW);
+                _lights.setMiddle(Lights.Color.ORANGE);
+                _lights.setRight(Lights.Color.RED);
+            }
         }
     }
 

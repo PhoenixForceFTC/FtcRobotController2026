@@ -150,6 +150,7 @@ public class RobotHardware
     public void init(int robotVersion)
     {
         _robotVersion = robotVersion;
+
         //------------------------------------------------------------------------------------------
         //--- Motor Config
         //------------------------------------------------------------------------------------------
@@ -282,6 +283,8 @@ public class RobotHardware
         );
         kickstand.initialize();
         kickstand.setFlywheel(flywheel);
+        kickstand.setIntake(intake);
+        //--- Camera reference set after camera is created (below)
 
         kickers = new Kickers(
                 servoKickerLeft,
@@ -316,6 +319,12 @@ public class RobotHardware
         
         //--- Set intake reference on kickers for reading ball count and colors
         kickers.setIntake(intake);
+        
+        //--- Set camera reference on kickstand for pausing scanning
+        kickstand.setCamera(camera);
+        
+        //--- Set lights reference on kickstand for kickstand status lights
+        kickstand.setLights(lights);
 
         //------------------------------------------------------------------------------------------
         //--- Robot-Specific Configuration
