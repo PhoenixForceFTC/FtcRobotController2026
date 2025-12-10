@@ -130,9 +130,8 @@ public class TeleOp_RPMTuning extends LinearOpMode
             _rpmTable3Balls[i] = -1;
         }
         
-        //--- Robot Initialize
-        int robotVersion = 2;
-        _robot.init(robotVersion);
+        //--- Robot Initialize (change to ALPHA or BETA as needed)
+        _robot.init(RobotHardware.BETA);
         
         //--- Display and wait for start
         telemetry.addData("STATUS", "RPM Tuning Ready");

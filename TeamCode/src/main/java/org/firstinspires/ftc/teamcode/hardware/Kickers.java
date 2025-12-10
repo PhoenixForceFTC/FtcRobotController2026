@@ -650,6 +650,12 @@ public class Kickers
         fireKicker(1);
         fireKicker(2);
         fireKicker(3);
+        
+        //--- Auto-start intake after firing
+        if (_intake != null)
+        {
+            _intake.intake();
+        }
     }
 
     //--- Fire kickers in sequence based on ball colors and selected sequence

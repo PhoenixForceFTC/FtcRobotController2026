@@ -70,9 +70,16 @@ I2C
 public class RobotHardware
 {
     //------------------------------------------------------------------------------------------
+    //--- Robot Versions
+    //------------------------------------------------------------------------------------------
+    public static final int ALPHA = 1;
+    public static final int BETA = 2;
+
+    //------------------------------------------------------------------------------------------
     //--- Settings
     //------------------------------------------------------------------------------------------
     private static final boolean SHOW_INFO = true;
+    private int _robotVersion = BETA;  // Default to Beta
 
     //------------------------------------------------------------------------------------------
     //--- OpMode
@@ -142,6 +149,7 @@ public class RobotHardware
     //------------------------------------------------------------------------------------------
     public void init(int robotVersion)
     {
+        _robotVersion = robotVersion;
         //------------------------------------------------------------------------------------------
         //--- Motor Config
         //------------------------------------------------------------------------------------------
@@ -310,10 +318,56 @@ public class RobotHardware
         kickers.setIntake(intake);
 
         //------------------------------------------------------------------------------------------
+        //--- Robot-Specific Configuration
+        //------------------------------------------------------------------------------------------
+        applyRobotSpecificConfig();
+
+        //------------------------------------------------------------------------------------------
         //--- Messages
         //------------------------------------------------------------------------------------------
-        _opMode.telemetry.addData(">", "Hardware Initialized");
+        String robotName = (_robotVersion == ALPHA) ? "ALPHA" : "BETA";
+        _opMode.telemetry.addData(">", "Hardware Initialized (" + robotName + ")");
         _opMode.telemetry.update();
+    }
+
+    //------------------------------------------------------------------------------------------
+    // Apply robot-specific hardware configurations.
+    // Add any differences between Alpha and Beta robots here.
+    //------------------------------------------------------------------------------------------
+    private void applyRobotSpecificConfig()
+    {
+        if (_robotVersion == ALPHA)
+        {
+            //--------------------------------------------------------------------------------------
+            //--- ALPHA Robot Configuration
+            //--------------------------------------------------------------------------------------
+            // Example: Flip servo directions if needed
+            // servoKickerLeft.setDirection(Servo.Direction.FORWARD);
+            
+            // Example: Adjust motor directions if needed
+            // motorIntake.setDirection(DcMotor.Direction.REVERSE);
+        }
+        else if (_robotVersion == BETA)
+        {
+            //--------------------------------------------------------------------------------------
+            //--- BETA Robot Configuration (Current Default)
+            //--------------------------------------------------------------------------------------
+            // All current hardware settings are configured for Beta
+            // Add any Beta-specific overrides here if needed
+        }
+    }
+
+    //------------------------------------------------------------------------------------------
+    // Get the current robot version
+    //------------------------------------------------------------------------------------------
+    public int getRobotVersion()
+    {
+        return _robotVersion;
+    }
+
+    public String getRobotName()
+    {
+        return (_robotVersion == ALPHA) ? "ALPHA" : "BETA";
     }
 
     //------------------------------------------------------------------------------------------

@@ -99,10 +99,13 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
 //  - A (✕)            - Toggle LONG distance lock (3 orange lights)
 //  - X (■)             - (available)
 //
+
+//--- TODO manual fire for each of the kickers - left, center, right
+
 //======================================================================
 //endregion
 
-@TeleOp(name="TeleOp", group="1")
+@TeleOp(name="TeleOp - Beta", group="1")
 public class TeleOp_Mecanum extends LinearOpMode
 {
     //------------------------------------------------------------------------------------------
@@ -126,8 +129,7 @@ public class TeleOp_Mecanum extends LinearOpMode
         //------------------------------------------------------------------------------------------
         //--- Robot Initialize
         //------------------------------------------------------------------------------------------
-        int robotVersion = 2; //--- 1 for ALPHA and 2 for BETA
-        _robot.init(robotVersion);
+        _robot.init(RobotHardware.BETA);
 
         //------------------------------------------------------------------------------------------
         //--- Display and wait for the game to start (driver presses START)
