@@ -441,8 +441,10 @@ public class Intake
             return;
         }
         
-        //--- Don't update lights if kickstand is down (kickstand uses lights)
-        if (_kickstand != null && _kickstand.getTargetPosition() == Kickstand.Position.DOWN)
+        //--- Don't update lights if KICKSTAND mode is active (kickstand takes priority for display)
+        //--- Note: We still set INTAKE mode which has higher priority than KICKSTAND,
+        //--- but we skip this if the user has actively deployed the kickstand
+        if (_lights.getActiveMode() == Lights.LightMode.KICKSTAND)
         {
             return;
         }
@@ -454,6 +456,11 @@ public class Intake
             ballColorToLightColor(_centerBallColor),
             ballColorToLightColor(_rightBallColor)
         );
+        
+        //--- Re-affirm INTAKE mode every loop to ensure it stays active
+        //--- This is important because the mode was set once in intake() but
+        //--- we need to maintain priority over lower-priority modes
+        _lights.setMode(Lights.LightMode.INTAKE);
     }
 
     private Lights.Color ballColorToLightColor(BallColor ballColor)
