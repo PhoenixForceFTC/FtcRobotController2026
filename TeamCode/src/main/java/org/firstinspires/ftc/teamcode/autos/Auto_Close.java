@@ -48,12 +48,9 @@ public class Auto_Close extends LinearOpMode {
     //--- Robot hardware
     private RobotHardware robot;
     
-    //--- Flywheel speeds for shooting (RPM)
-    //--- When firing all 3 at once, flywheel slows down so we need higher initial RPM
-    //--- When firing 1 at a time (sequence), each ball uses the single-ball RPM
-    private static final double SHOOT_RPM_1_BALL = 2250.0;   // Single ball / sequence firing
-    private static final double SHOOT_RPM_2_BALLS = 2350.0;  // Two balls at once
-    private static final double SHOOT_RPM_3_BALLS = 2550.0;  // Three balls at once (fire all)
+    //--- Flywheel speed for shooting (RPM)
+    //--- Firing in sequence (one ball at a time) uses single-ball RPM
+    private static final double SHOOT_RPM = 2250.0;
 
     //--- Pre-match camera positions for sequence detection (tune based on starting position)
     //--- Yaw: 0.0 = full right, 0.5 = center, 1.0 = full left
@@ -325,14 +322,14 @@ public class Auto_Close extends LinearOpMode {
         Actions.runBlocking(
             drive.actionBuilder(startPose)
                 //--- Start flywheel while driving
-                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM_1_BALL))
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
                 .waitSeconds(2.0)  //--- Give flywheel time to spin up
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Align to shoot
                 .strafeToSplineHeading(pos(-33, -31), degreeHeading(227))
                 //--- Wait for flywheel to get up to speed, then fire in sequence
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Preloads", fireLog))
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog))
                 .build()
         );
 
@@ -358,7 +355,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Wait for flywheel to get up to speed, then fire in sequence
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Stack 1", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog))
                     .build()
             );
         }
@@ -384,7 +381,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Wait for flywheel to get up to speed, then fire in sequence
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Stack 2", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog))
                     .build()
             );
         }
@@ -461,14 +458,14 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(startPose)
-                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM_1_BALL))
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
                 .waitSeconds(2.0)
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Blue: (-33.5, -36.5, 227°) → Red: (+33.5, -36.5, 313°)
                 .strafeToSplineHeading(pos(33.5, -36.5), degreeHeading(313))
                 //--- Wait for flywheel to get up to speed, then fire in sequence
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Preloads", fireLog))
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog))
                 .build()
         );
 
@@ -497,7 +494,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Wait for flywheel to get up to speed, then fire in sequence
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Stack 1", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog))
                     .build()
             );
         }
@@ -526,7 +523,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Wait for flywheel to get up to speed, then fire in sequence
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Stack 2", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog))
                     .build()
             );
         }
