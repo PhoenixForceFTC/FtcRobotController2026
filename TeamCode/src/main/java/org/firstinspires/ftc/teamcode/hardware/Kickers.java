@@ -5,6 +5,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import java.util.ArrayList;
+import java.util.List;
 //endregion
 
 public class Kickers
@@ -129,6 +131,10 @@ public class Kickers
     private boolean _tuneBPressed = false;
     private boolean _tuneXPressed = false;
     private boolean _tuneInitialized = false;
+    
+    //--- Firing log - tracks each shot for telemetry display
+    private List<String> _fireLog = new ArrayList<>();
+    private static final int MAX_LOG_ENTRIES = 10;  //--- Keep last N entries to avoid memory issues
     //endregion
 
     //region --- Constructor ---
@@ -698,6 +704,9 @@ public class Kickers
     //--- Fire all kickers at once
     public void fireAll()
     {
+        //--- Log the shot
+        logFire("ALL", 3);
+        
         fireKicker(1);
         fireKicker(2);
         fireKicker(3);
@@ -712,6 +721,9 @@ public class Kickers
     //--- Fire kickers in sequence based on ball colors and selected sequence
     public void fireSequence()
     {
+        //--- Log the shot (uses 1-ball RPM since firing one at a time)
+        logFire("SEQ", 1);
+        
         //--- Calculate firing order based on sequence and ball colors
         _firingOrder = calculateFiringOrder();
         _sequenceFiring = true;
@@ -905,6 +917,72 @@ public class Kickers
     private ElapsedTime _velocitySpinUpTimer = new ElapsedTime();
     private double _lastSpinUpTime = 0.0;
     private boolean _wasSpinningUp = false;
+
+    //region --- Firing Log ---
+    
+    //--- Log a fire event with distance, ball count, and RPM info
+    //--- @param type "ALL" for fireAll, "SEQ" for fireSequence
+    //--- @param ballCount Number of balls being fired (for RPM lookup)
+    private void logFire(String type, int ballCount)
+    {
+        //--- Get distance from camera
+        String distance = "??";
+        if (_camera != null)
+        {
+            double dist = _camera.getStoredDistanceInches();
+            if (dist > 0)
+            {
+                distance = String.format("%.0f", dist);
+            }
+        }
+        
+        //--- Get actual and target RPM from flywheel
+        double actualRPM = 0;
+        double targetRPM = _targetVelocity;
+        if (_flywheel != null)
+        {
+            actualRPM = _flywheel.getCurrentRPM();
+            targetRPM = _flywheel.getTargetRPM();
+        }
+        
+        //--- Get actual ball count from intake if available
+        int actualBalls = ballCount;
+        if (_intake != null)
+        {
+            int intakeBalls = _intake.getBallCount();
+            if (intakeBalls > 0)
+            {
+                actualBalls = intakeBalls;
+            }
+        }
+        
+        //--- Format: "ALL 3b @ 36" | 2850/3000 RPM"
+        String entry = String.format("%s %db @ %s\" | %.0f/%.0f", 
+                type, actualBalls, distance, actualRPM, targetRPM);
+        
+        //--- Add to log (newest first)
+        _fireLog.add(0, entry);
+        
+        //--- Trim log to max size
+        while (_fireLog.size() > MAX_LOG_ENTRIES)
+        {
+            _fireLog.remove(_fireLog.size() - 1);
+        }
+    }
+    
+    //--- Get the firing log for display
+    public List<String> getFireLog()
+    {
+        return _fireLog;
+    }
+    
+    //--- Clear the firing log
+    public void clearFireLog()
+    {
+        _fireLog.clear();
+    }
+    
+    //endregion
 
     public void getTelemetry()
     {

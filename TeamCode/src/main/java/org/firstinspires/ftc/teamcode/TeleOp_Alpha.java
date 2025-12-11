@@ -170,6 +170,19 @@ public class TeleOp_Alpha extends LinearOpMode
             // _robot.lights.testPattern();
  
             //------------------------------------------------------------------------------------------
+            //--- Firing Log Display
+            //------------------------------------------------------------------------------------------
+            java.util.List<String> fireLog = _robot.kickers.getFireLog();
+            if (!fireLog.isEmpty())
+            {
+                telemetry.addLine("--- FIRE LOG ---");
+                for (String entry : fireLog)
+                {
+                    telemetry.addLine(entry);
+                }
+            }
+
+            //------------------------------------------------------------------------------------------
             //--- Update Telemetry Display
             //------------------------------------------------------------------------------------------
             telemetry.update();
