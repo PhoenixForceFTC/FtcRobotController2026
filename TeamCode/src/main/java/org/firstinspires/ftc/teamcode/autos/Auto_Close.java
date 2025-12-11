@@ -88,11 +88,10 @@ public class Auto_Close extends LinearOpMode {
     private boolean dpadUpPressed = false;
     private boolean dpadDownPressed = false;
 
-    //--- Light alternation timer for pre-match display
+    //--- Light timer for pre-match display (show alliance color, then let camera take over)
     private ElapsedTime lightTimer = new ElapsedTime();
-    private double lightPhaseDuration = 3.0;  // Seconds per phase (adjustable)
-    private int lightPhase = 0;  // 0=alliance, 1=off, 2=pattern, 3=off
-    private boolean lightsNeedUpdate = true;  // Flag to only set lights once per phase change
+    private static final double ALLIANCE_DISPLAY_TIME = 3.0;  // Seconds to show alliance color
+    private boolean allianceDisplayComplete = false;  // Flag to track if initial display is done
 
     @Override
     public void runOpMode() throws InterruptedException 
@@ -114,8 +113,7 @@ public class Auto_Close extends LinearOpMode {
             robot.lights.setAllRed();
         }
         lightTimer.reset();
-        lightPhase = 0;
-        lightsNeedUpdate = false;  // Already set initial lights
+        allianceDisplayComplete = false;
 
         //========================================================================
         //--- Alliance Selection Loop (during init, before start)
@@ -140,9 +138,9 @@ public class Auto_Close extends LinearOpMode {
                     selectedAlliance = Alliance.BLUE;
                     robot.camera.setPreMatchPosition(PREMATCH_BLUE_YAW, PREMATCH_BLUE_PITCH);
                     //--- Reset light display to show new alliance color
-                    lightPhase = 0;
+                    robot.lights.setAllBlue();
                     lightTimer.reset();
-                    lightsNeedUpdate = true;
+                    allianceDisplayComplete = false;
                 }
             } 
             else if (gamepad2.b) 
@@ -152,17 +150,21 @@ public class Auto_Close extends LinearOpMode {
                     selectedAlliance = Alliance.RED;
                     robot.camera.setPreMatchPosition(PREMATCH_RED_YAW, PREMATCH_RED_PITCH);
                     //--- Reset light display to show new alliance color
-                    lightPhase = 0;
+                    robot.lights.setAllRed();
                     lightTimer.reset();
-                    lightsNeedUpdate = true;
+                    allianceDisplayComplete = false;
                 }
             }
 
-            //--- Run pre-match detection (updates lights when sequence detected)
-            detectedSequence = robot.camera.runPreMatchDetection();
-
-            //--- Alternate lights between alliance color and detected pattern
+            //--- Update pre-match lights (handles alliance display timing)
+            //--- Only run camera detection after alliance display is complete
             updatePreMatchLights();
+            
+            if (allianceDisplayComplete)
+            {
+                //--- Run pre-match detection (updates lights when sequence detected)
+                detectedSequence = robot.camera.runPreMatchDetection();
+            }
 
             //--- Check for parking position selection on gamepad2
             if (gamepad2.y)
@@ -590,102 +592,26 @@ public class Auto_Close extends LinearOpMode {
     //--- PRE-MATCH LIGHT DISPLAY
     //========================================================================
     /**
-     * Updates the lights to alternate between alliance color, off, pattern, off.
-     * 3 seconds: Alliance color (Blue/Red) on all lights
-     * 3 seconds: Lights off
-     * 3 seconds: Pattern colors (left=position 1, right=position 3)
-     * 3 seconds: Lights off
-     * If no pattern detected (UNKNOWN), stays on alliance color.
+     * Updates the lights during pre-match:
+     * - First 3 seconds: Show alliance color (Blue/Red)
+     * - After 3 seconds: Let camera detection control lights (shows GPP/PGP/PPG pattern)
      */
     private void updatePreMatchLights()
     {
-        //--- If no pattern detected, just show alliance color (only update once)
-        if (detectedSequence == Camera.BallSequence.UNKNOWN)
+        //--- During initial alliance display period, keep showing alliance color
+        if (!allianceDisplayComplete)
         {
-            if (lightsNeedUpdate)
+            if (lightTimer.seconds() >= ALLIANCE_DISPLAY_TIME)
             {
-                if (selectedAlliance == Alliance.BLUE)
-                {
-                    robot.lights.setAllBlue();
-                }
-                else
-                {
-                    robot.lights.setAllRed();
-                }
-                lightsNeedUpdate = false;
+                allianceDisplayComplete = true;
+                //--- Camera's runPreMatchDetection() will now control the lights
             }
+            //--- Don't change lights during alliance display period
             return;
         }
-
-        //--- Check if it's time to switch phases
-        if (lightTimer.seconds() >= lightPhaseDuration)
-        {
-            lightPhase = (lightPhase + 1) % 4;  // Cycle through 0, 1, 2, 3
-            lightTimer.reset();
-            lightsNeedUpdate = true;  // Need to update lights for new phase
-        }
-
-        //--- Only set lights when phase changes (prevents flickering)
-        if (!lightsNeedUpdate)
-        {
-            return;
-        }
-        lightsNeedUpdate = false;
-
-        //--- Display based on current phase
-        switch (lightPhase)
-        {
-            case 0:
-                //--- Show alliance color on all lights
-                if (selectedAlliance == Alliance.BLUE)
-                {
-                    robot.lights.setAllBlue();
-                }
-                else
-                {
-                    robot.lights.setAllRed();
-                }
-                break;
-                
-            case 1:
-            case 3:
-                //--- Lights off (set each servo to OFF position explicitly)
-                robot.lights.setLeft(Lights.Color.OFF);
-                robot.lights.setMiddle(Lights.Color.OFF);
-                robot.lights.setRight(Lights.Color.OFF);
-                break;
-                
-            case 2:
-                //--- Show pattern: left=position 1, right=position 3
-                //--- GPP: left=GREEN, right=PURPLE
-                //--- PGP: left=PURPLE, right=PURPLE
-                //--- PPG: left=PURPLE, right=GREEN
-                Lights.Color leftColor = getPatternColor(detectedSequence, 1);
-                Lights.Color rightColor = getPatternColor(detectedSequence, 3);
-                robot.lights.setLeft(leftColor);
-                robot.lights.setRight(rightColor);
-                break;
-        }
+        
+        //--- After alliance display, camera.runPreMatchDetection() handles the lights
+        //--- (it sets lights based on detected sequence: GPP/PGP/PPG)
     }
 
-    /**
-     * Gets the color for a specific position (1, 2, or 3) in a ball sequence.
-     * @param sequence The detected ball sequence (GPP, PGP, PPG)
-     * @param position The position in the sequence (1, 2, or 3)
-     * @return The corresponding Lights.Color (GREEN or PURPLE)
-     */
-    private Lights.Color getPatternColor(Camera.BallSequence sequence, int position)
-    {
-        switch (sequence)
-        {
-            case GPP:
-                return (position == 1) ? Lights.Color.GREEN : Lights.Color.PURPLE;
-            case PGP:
-                return (position == 2) ? Lights.Color.GREEN : Lights.Color.PURPLE;
-            case PPG:
-                return (position == 3) ? Lights.Color.GREEN : Lights.Color.PURPLE;
-            default:
-                return Lights.Color.OFF;
-        }
-    }
 }
