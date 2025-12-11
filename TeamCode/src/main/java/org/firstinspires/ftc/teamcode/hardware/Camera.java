@@ -354,7 +354,11 @@ public class Camera
                 _lastDetectedTag = detectedId;
 
                 //--- Adjust pitch to keep tag centered vertically
-                adjustPitchToTrack(targetBlock);
+                //--- Skip during PRE_MATCH - camera should stay fixed for pattern detection
+                if (_scanMode != ScanMode.PRE_MATCH)
+                {
+                    adjustPitchToTrack(targetBlock);
+                }
 
                 //--- Process tag (set lights, detect sequence, etc.)
                 //--- Only trigger sequence detection once per tag, but always update target lights

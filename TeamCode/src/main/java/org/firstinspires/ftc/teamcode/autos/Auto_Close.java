@@ -58,9 +58,9 @@ public class Auto_Close extends LinearOpMode {
     //--- Pre-match camera positions for sequence detection (tune based on starting position)
     //--- Yaw: 0.0 = full right, 0.5 = center, 1.0 = full left
     //--- Pitch: 0.0 = down, 0.5 = level, 1.0 = up
-    private static final double PREMATCH_BLUE_YAW = 0.7;    // Blue: look left toward obelisk
+    private static final double PREMATCH_BLUE_YAW = 0.6;    // Blue: look left toward obelisk
     private static final double PREMATCH_BLUE_PITCH = 0.60;
-    private static final double PREMATCH_RED_YAW = 0.3;     // Red: look right toward obelisk
+    private static final double PREMATCH_RED_YAW = 0.4;     // Red: look right toward obelisk
     private static final double PREMATCH_RED_PITCH = 0.60;
     
     //--- Log of firing speeds for each phase
