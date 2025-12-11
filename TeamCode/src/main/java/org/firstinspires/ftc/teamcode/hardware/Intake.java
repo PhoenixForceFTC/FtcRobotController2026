@@ -447,14 +447,13 @@ public class Intake
             return;
         }
 
-        //--- Update left light based on left ball color
-        _lights.setLeft(ballColorToLightColor(_leftBallColor));
-
-        //--- Update middle light based on center ball color
-        _lights.setMiddle(ballColorToLightColor(_centerBallColor));
-
-        //--- Update right light based on right ball color
-        _lights.setRight(ballColorToLightColor(_rightBallColor));
+        //--- Update the intake slot with current ball colors
+        //--- The Lights class will display these when in INTAKE mode
+        _lights.setIntakeSlot(
+            ballColorToLightColor(_leftBallColor),
+            ballColorToLightColor(_centerBallColor),
+            ballColorToLightColor(_rightBallColor)
+        );
     }
 
     private Lights.Color ballColorToLightColor(BallColor ballColor)
@@ -474,12 +473,13 @@ public class Intake
     }
 
     //--- Restore lights to default state (call when intake stops)
-    //--- Sets lights OFF so camera can control them based on detected targets
+    //--- Clears intake slot and releases INTAKE mode so camera can control lights
     public void restoreLights()
     {
         if (_lights != null)
         {
-            _lights.setAllOff();  // Turn off so camera can show target colors
+            _lights.setIntakeSlot(Lights.Color.OFF, Lights.Color.OFF, Lights.Color.OFF);
+            _lights.releaseMode(Lights.LightMode.INTAKE);
         }
     }
 
@@ -569,6 +569,12 @@ public class Intake
         resetDistanceBuffers();
         _intakeOn = true;
         _motorIntake.setPower(INTAKE_SPEED);
+        
+        //--- Set lights to INTAKE mode
+        if (_lights != null)
+        {
+            _lights.setMode(Lights.LightMode.INTAKE);
+        }
     }
 
     //--- Run intake at custom speed
@@ -578,6 +584,12 @@ public class Intake
         resetDistanceBuffers();
         _intakeOn = true;
         _motorIntake.setPower(Math.abs(power));
+        
+        //--- Set lights to INTAKE mode
+        if (_lights != null)
+        {
+            _lights.setMode(Lights.LightMode.INTAKE);
+        }
     }
 
     //--- Run outtake (reverse) at configured speed

@@ -195,17 +195,19 @@ public class Kickstand
         if (_targetPosition == Position.DOWN)
         {
             _targetPosition = Position.UP;
-            //--- Kickstand going UP (off) - other methods will control lights
+            //--- Kickstand going UP - release KICKSTAND mode (lights will go OFF)
+            if (_lights != null)
+            {
+                _lights.releaseMode(Lights.LightMode.KICKSTAND);
+            }
         }
         else
         {
             _targetPosition = Position.DOWN;
-            //--- Kickstand going DOWN (on) - show yellow/orange/red pattern
+            //--- Kickstand going DOWN - show red/orange/yellow pattern
             if (_lights != null)
             {
-                _lights.setLeft(Lights.Color.YELLOW);
-                _lights.setMiddle(Lights.Color.ORANGE);
-                _lights.setRight(Lights.Color.RED);
+                _lights.setMode(Lights.LightMode.KICKSTAND);
             }
         }
     }

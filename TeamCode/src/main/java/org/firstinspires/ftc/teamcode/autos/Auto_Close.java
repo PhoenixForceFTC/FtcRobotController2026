@@ -101,6 +101,9 @@ public class Auto_Close extends LinearOpMode {
         robot = new RobotHardware(this);
         robot.init(2);  // Beta robot
 
+        //--- Use MANUAL mode for pre-match lights (we control them directly)
+        robot.lights.setModeEnabled(false);
+        
         //--- Set initial lights based on default alliance
         if (selectedAlliance == Alliance.BLUE)
         {
@@ -266,6 +269,10 @@ public class Auto_Close extends LinearOpMode {
         }
 
         if (isStopRequested()) return;
+
+        //--- Re-enable mode system for autonomous (intake will control lights)
+        robot.lights.setModeEnabled(true);
+        robot.lights.forceMode(Lights.LightMode.DEFAULT);
 
         //========================================================================
         //--- Run selected alliance routine

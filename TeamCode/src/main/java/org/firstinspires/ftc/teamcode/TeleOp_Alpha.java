@@ -187,7 +187,8 @@ public class TeleOp_Alpha extends LinearOpMode
         //--- Lock distance to LONG for this shot
         _robot.camera.setFixedDistanceLong();
         
-        //--- Show yellow lights during auto-fire sequence
+        //--- Show yellow lights during auto-fire sequence (use MANUAL mode to bypass slot system)
+        _robot.lights.forceMode(Lights.LightMode.MANUAL);
         _robot.lights.setAllYellow();
         
         //--- Set starting pose: (0, 0) heading 180°
@@ -211,8 +212,8 @@ public class TeleOp_Alpha extends LinearOpMode
         //--- Unlock distance after firing
         _robot.camera.unlockDistance();
         
-        //--- Turn off lights (camera will take over on next run)
-        _robot.lights.setAllOff();
+        //--- Return to normal mode system (camera will take over)
+        _robot.lights.forceMode(Lights.LightMode.CAMERA_TARGET);
     }
 
 }

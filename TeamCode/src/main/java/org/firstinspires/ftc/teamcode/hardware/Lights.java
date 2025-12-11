@@ -8,6 +8,33 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 //endregion
 
+/**
+ * Lights - Manages robot LED lights with a priority-based mode system.
+ * 
+ * Each subsystem updates its "slot" with colors via setXxxSlot() methods.
+ * The active mode determines which slot is displayed.
+ * Higher priority modes override lower priority modes.
+ * 
+ * Priority (highest to lowest):
+ * - INTAKE:        Ball colors during intake (GREEN/PURPLE/RED/OFF)
+ * - KICKSTAND:     Red/Orange/Yellow when kickstand is down
+ * - DISTANCE_LOCK: Orange lights showing distance lock level (1/2/3 lights)
+ * - CAMERA_TARGET: Blue/Red lights when tracking targets
+ * - OFF/DEFAULT:   All lights off (no target = off)
+ * 
+ * Usage:
+ *   // Subsystem updates its slot every loop:
+ *   lights.setIntakeSlot(leftColor, middleColor, rightColor);
+ *   
+ *   // Subsystem activates its mode when needed:
+ *   lights.setMode(LightMode.INTAKE);
+ *   
+ *   // Subsystem releases its mode when done:
+ *   lights.releaseMode(LightMode.INTAKE);
+ *   
+ *   // Or force a specific mode (ignores priority):
+ *   lights.forceMode(LightMode.DEFAULT);
+ */
 public class Lights
 {
     //region --- Constants ---
@@ -51,6 +78,22 @@ public class Lights
         FAST,
         PULSE
     }
+
+    /**
+     * Light modes with priority levels.
+     * Higher ordinal = higher priority.
+     * When multiple modes are requested, the highest priority wins.
+     */
+    public enum LightMode
+    {
+        OFF,            // All lights off (lowest priority, same as no target)
+        DEFAULT,        // Same as OFF - no target means lights off
+        CAMERA_TARGET,  // Blue/Red based on detected target
+        DISTANCE_LOCK,  // Orange pattern (1/2/3 lights)
+        KICKSTAND,      // Red/Orange/Yellow when kickstand is down
+        INTAKE,         // Ball colors during intake (highest priority for teleop)
+        MANUAL          // Direct control - bypasses slot system
+    }
     //endregion
 
     //region --- Hardware ---
@@ -62,6 +105,19 @@ public class Lights
     private final Telemetry _telemetry;
     private final boolean _showInfo;
     private final int _robotVersion;
+    //endregion
+
+    //region --- Mode State ---
+    private LightMode _activeMode = LightMode.DEFAULT;
+    private boolean _modeEnabled = true;  // When false, slot system is bypassed
+    private boolean _kickstandActive = false;  // True when kickstand is DOWN (not just checking slot)
+
+    //--- Slots: each subsystem updates its own slot, run() picks which to display
+    private Color[] _defaultSlot = { Color.OFF, Color.OFF, Color.OFF };  // Default = OFF (no target)
+    private Color[] _cameraSlot = { Color.OFF, Color.OFF, Color.OFF };
+    private Color[] _distanceLockSlot = { Color.OFF, Color.OFF, Color.OFF };
+    private Color[] _kickstandSlot = { Color.RED, Color.ORANGE, Color.YELLOW };  // Kickstand shows init pattern
+    private Color[] _intakeSlot = { Color.OFF, Color.OFF, Color.OFF };
     //endregion
 
     //region --- Blink State ---
@@ -116,11 +172,187 @@ public class Lights
     //region --- Initialize ---
     public void initialize()
     {
-        //--- Set default light colors on initialization
-        setLeft(Color.RED);
-        setMiddle(Color.ORANGE);
-        setRight(Color.YELLOW);
+        //--- Set lights OFF on initialization (pre-match will show pattern separately)
+        _activeMode = LightMode.OFF;
+        _modeEnabled = true;
+        _kickstandActive = false;
+        applySlot(_defaultSlot);  // Default slot is now OFF
     }
+    //endregion
+
+    //region --- Mode Control ---
+
+    /**
+     * Set the active light mode. Higher priority modes override lower priority modes.
+     * @param mode The mode to activate
+     */
+    public void setMode(LightMode mode)
+    {
+        if (mode.ordinal() >= _activeMode.ordinal())
+        {
+            _activeMode = mode;
+        }
+        //--- Track kickstand state (stays active even when overridden by higher priority)
+        if (mode == LightMode.KICKSTAND)
+        {
+            _kickstandActive = true;
+        }
+    }
+
+    /**
+     * Release a mode. If this was the active mode, drops to the next lower priority mode.
+     * @param mode The mode to release
+     */
+    public void releaseMode(LightMode mode)
+    {
+        //--- If releasing KICKSTAND mode, clear the active flag
+        if (mode == LightMode.KICKSTAND)
+        {
+            _kickstandActive = false;
+        }
+        
+        if (_activeMode == mode)
+        {
+            //--- Find the highest priority mode that should be active
+            //--- Check in priority order: KICKSTAND (if active), DISTANCE_LOCK, CAMERA_TARGET, then OFF
+            if (_kickstandActive)
+            {
+                _activeMode = LightMode.KICKSTAND;
+            }
+            else if (hasSlotColors(_distanceLockSlot))
+            {
+                _activeMode = LightMode.DISTANCE_LOCK;
+            }
+            else if (hasSlotColors(_cameraSlot))
+            {
+                _activeMode = LightMode.CAMERA_TARGET;
+            }
+            else
+            {
+                _activeMode = LightMode.OFF;  // No target = OFF
+            }
+        }
+    }
+
+    /**
+     * Force a specific mode, ignoring priority rules.
+     * Use this for special cases like auto pre-match display.
+     * @param mode The mode to force
+     */
+    public void forceMode(LightMode mode)
+    {
+        _activeMode = mode;
+    }
+
+    /**
+     * Get the current active mode.
+     */
+    public LightMode getActiveMode()
+    {
+        return _activeMode;
+    }
+
+    /**
+     * Enable or disable the mode system.
+     * When disabled, direct setLeft/setMiddle/setRight calls work as before.
+     * When enabled (default), the slot system manages lights.
+     */
+    public void setModeEnabled(boolean enabled)
+    {
+        _modeEnabled = enabled;
+    }
+
+    /**
+     * Check if a slot has any non-OFF colors set.
+     */
+    private boolean hasSlotColors(Color[] slot)
+    {
+        return slot[0] != Color.OFF || slot[1] != Color.OFF || slot[2] != Color.OFF;
+    }
+
+    //endregion
+
+    //region --- Slot Updates (subsystems call these) ---
+
+    /**
+     * Update the INTAKE slot colors. Call this every loop when intake is running.
+     * These colors are displayed when mode is INTAKE.
+     */
+    public void setIntakeSlot(Color left, Color middle, Color right)
+    {
+        _intakeSlot[0] = left;
+        _intakeSlot[1] = middle;
+        _intakeSlot[2] = right;
+    }
+
+    /**
+     * Update the CAMERA_TARGET slot colors. Call this every loop when camera is tracking.
+     * These colors are displayed when mode is CAMERA_TARGET.
+     */
+    public void setCameraSlot(Color left, Color middle, Color right)
+    {
+        _cameraSlot[0] = left;
+        _cameraSlot[1] = middle;
+        _cameraSlot[2] = right;
+    }
+
+    /**
+     * Update the CAMERA_TARGET slot with a single color for all lights.
+     */
+    public void setCameraSlot(Color color)
+    {
+        setCameraSlot(color, color, color);
+    }
+
+    /**
+     * Update the DISTANCE_LOCK slot colors. Call this when distance is locked.
+     * These colors are displayed when mode is DISTANCE_LOCK.
+     */
+    public void setDistanceLockSlot(Color left, Color middle, Color right)
+    {
+        _distanceLockSlot[0] = left;
+        _distanceLockSlot[1] = middle;
+        _distanceLockSlot[2] = right;
+    }
+
+    /**
+     * Update the DEFAULT slot colors. Normally Red/Orange/Yellow.
+     */
+    public void setDefaultSlot(Color left, Color middle, Color right)
+    {
+        _defaultSlot[0] = left;
+        _defaultSlot[1] = middle;
+        _defaultSlot[2] = right;
+    }
+
+    /**
+     * Update the KICKSTAND slot colors. Always Red/Orange/Yellow.
+     * Called when kickstand goes down.
+     */
+    public void setKickstandSlot(Color left, Color middle, Color right)
+    {
+        _kickstandSlot[0] = left;
+        _kickstandSlot[1] = middle;
+        _kickstandSlot[2] = right;
+    }
+
+    /**
+     * Clear all slots (set to OFF).
+     */
+    public void clearAllSlots()
+    {
+        _intakeSlot[0] = Color.OFF;
+        _intakeSlot[1] = Color.OFF;
+        _intakeSlot[2] = Color.OFF;
+        _cameraSlot[0] = Color.OFF;
+        _cameraSlot[1] = Color.OFF;
+        _cameraSlot[2] = Color.OFF;
+        _distanceLockSlot[0] = Color.OFF;
+        _distanceLockSlot[1] = Color.OFF;
+        _distanceLockSlot[2] = Color.OFF;
+        //--- Note: kickstand slot keeps its pattern (Red/Orange/Yellow)
+    }
+
     //endregion
 
     //region --- Run (call this in your main loop) ---
@@ -175,26 +407,68 @@ public class Lights
             }
         }
 
-        //--- Handle left light blinking
+        //--- Apply colors from active mode's slot (if mode system is enabled)
+        if (_modeEnabled && _activeMode != LightMode.MANUAL)
+        {
+            Color[] activeSlot;
+            switch (_activeMode)
+            {
+                case INTAKE:
+                    activeSlot = _intakeSlot;
+                    break;
+                case KICKSTAND:
+                    activeSlot = _kickstandSlot;
+                    break;
+                case DISTANCE_LOCK:
+                    activeSlot = _distanceLockSlot;
+                    break;
+                case CAMERA_TARGET:
+                    activeSlot = _cameraSlot;
+                    break;
+                case OFF:
+                case DEFAULT:
+                default:
+                    //--- No target = lights OFF
+                    activeSlot = new Color[] { Color.OFF, Color.OFF, Color.OFF };
+                    break;
+            }
+            applySlot(activeSlot);
+        }
+
+        //--- Handle blinking (for any lights that have blink set)
         if (_leftBlink != Blink.NONE)
         {
             boolean isOn = getBlinkState(_leftBlink);
             _servoLightLeft.setPosition(isOn ? _leftColor.getPosition() : Color.OFF.getPosition());
         }
 
-        //--- Handle middle light blinking
         if (_middleBlink != Blink.NONE)
         {
             boolean isOn = getBlinkState(_middleBlink);
             _servoLightMiddle.setPosition(isOn ? _middleColor.getPosition() : Color.OFF.getPosition());
         }
 
-        //--- Handle right light blinking
         if (_rightBlink != Blink.NONE)
         {
             boolean isOn = getBlinkState(_rightBlink);
             _servoLightRight.setPosition(isOn ? _rightColor.getPosition() : Color.OFF.getPosition());
         }
+    }
+
+    /**
+     * Apply a slot's colors to the lights (no blink).
+     */
+    private void applySlot(Color[] slot)
+    {
+        _leftColor = slot[0];
+        _middleColor = slot[1];
+        _rightColor = slot[2];
+        _leftBlink = Blink.NONE;
+        _middleBlink = Blink.NONE;
+        _rightBlink = Blink.NONE;
+        _servoLightLeft.setPosition(slot[0].getPosition());
+        _servoLightMiddle.setPosition(slot[1].getPosition());
+        _servoLightRight.setPosition(slot[2].getPosition());
     }
 
     //--- Helper to get the current on/off state for a blink mode

@@ -386,8 +386,9 @@ public class Camera
                 //--- Check if hold time has expired
                 if (_lightHoldActive && _lightHoldTimer.seconds() >= LIGHT_HOLD_TIME)
                 {
-                    //--- Hold time expired, now turn off lights
-                    _lights.setAllOff();
+                    //--- Hold time expired, clear camera slot and release camera mode
+                    _lights.setCameraSlot(Lights.Color.OFF, Lights.Color.OFF, Lights.Color.OFF);
+                    _lights.releaseMode(Lights.LightMode.CAMERA_TARGET);
                     _lightHoldActive = false;
                     _lastDetectedTag = -1;
                     _lastProcessedTag = -1;
@@ -416,21 +417,26 @@ public class Camera
             if (_distanceLockType == DistanceLockType.SHORT)
             {
                 //--- SHORT: left orange only
-                _lights.setLeft(Lights.Color.ORANGE);
-                _lights.setMiddle(Lights.Color.OFF);
-                _lights.setRight(Lights.Color.OFF);
+                _lights.setDistanceLockSlot(Lights.Color.ORANGE, Lights.Color.OFF, Lights.Color.OFF);
+                _lights.setMode(Lights.LightMode.DISTANCE_LOCK);
             }
             else if (_distanceLockType == DistanceLockType.MEDIUM)
             {
                 //--- MEDIUM: left and center orange
-                _lights.setLeft(Lights.Color.ORANGE);
-                _lights.setMiddle(Lights.Color.ORANGE);
-                _lights.setRight(Lights.Color.OFF);
+                _lights.setDistanceLockSlot(Lights.Color.ORANGE, Lights.Color.ORANGE, Lights.Color.OFF);
+                _lights.setMode(Lights.LightMode.DISTANCE_LOCK);
             }
             else if (_distanceLockType == DistanceLockType.LONG)
             {
                 //--- LONG: all three orange
-                _lights.setAll(Lights.Color.ORANGE);
+                _lights.setDistanceLockSlot(Lights.Color.ORANGE, Lights.Color.ORANGE, Lights.Color.ORANGE);
+                _lights.setMode(Lights.LightMode.DISTANCE_LOCK);
+            }
+            else
+            {
+                //--- No distance lock, clear slot and release the mode
+                _lights.setDistanceLockSlot(Lights.Color.OFF, Lights.Color.OFF, Lights.Color.OFF);
+                _lights.releaseMode(Lights.LightMode.DISTANCE_LOCK);
             }
         }
         catch (Exception e)
@@ -548,55 +554,54 @@ public class Camera
         switch (tagId)
         {
             case TAG_BLUE_TARGET:
-                //--- Blue target: solid blue lights
-                _lights.setAll(Lights.Color.BLUE);
+                //--- Blue target: update camera slot with blue
+                _lights.setCameraSlot(Lights.Color.BLUE);
+                _lights.setMode(Lights.LightMode.CAMERA_TARGET);
                 break;
 
             case TAG_SEQUENCE_GPP:
-                //--- GPP sequence: set kickers to GPP, solid Green-Purple-Purple
+                //--- GPP sequence: set kickers to GPP, update camera slot
                 _detectedSequence = BallSequence.GPP;
                 _kickers.setSequence(Kickers.Sequence.GPP);
-                _lights.setLeft(Lights.Color.GREEN);
-                _lights.setMiddle(Lights.Color.PURPLE);
-                _lights.setRight(Lights.Color.PURPLE);
+                _lights.setCameraSlot(Lights.Color.GREEN, Lights.Color.PURPLE, Lights.Color.PURPLE);
+                _lights.setMode(Lights.LightMode.CAMERA_TARGET);
                 break;
 
             case TAG_SEQUENCE_PGP:
-                //--- PGP sequence: set kickers to PGP, solid Purple-Green-Purple
+                //--- PGP sequence: set kickers to PGP, update camera slot
                 _detectedSequence = BallSequence.PGP;
                 _kickers.setSequence(Kickers.Sequence.PGP);
-                _lights.setLeft(Lights.Color.PURPLE);
-                _lights.setMiddle(Lights.Color.GREEN);
-                _lights.setRight(Lights.Color.PURPLE);
+                _lights.setCameraSlot(Lights.Color.PURPLE, Lights.Color.GREEN, Lights.Color.PURPLE);
+                _lights.setMode(Lights.LightMode.CAMERA_TARGET);
                 break;
 
             case TAG_SEQUENCE_PPG:
-                //--- PPG sequence: set kickers to PPG, solid Purple-Purple-Green
+                //--- PPG sequence: set kickers to PPG, update camera slot
                 _detectedSequence = BallSequence.PPG;
                 _kickers.setSequence(Kickers.Sequence.PPG);
-                _lights.setLeft(Lights.Color.PURPLE);
-                _lights.setMiddle(Lights.Color.PURPLE);
-                _lights.setRight(Lights.Color.GREEN);
+                _lights.setCameraSlot(Lights.Color.PURPLE, Lights.Color.PURPLE, Lights.Color.GREEN);
+                _lights.setMode(Lights.LightMode.CAMERA_TARGET);
                 break;
 
             case TAG_RED_TARGET:
-                //--- Red target: solid red lights
-                _lights.setAll(Lights.Color.RED);
+                //--- Red target: update camera slot with red
+                _lights.setCameraSlot(Lights.Color.RED);
+                _lights.setMode(Lights.LightMode.CAMERA_TARGET);
                 break;
         }
     }
 
     //--- Update lights for target tags only (blue/red) without re-triggering sequence detection
-    //--- Called every loop to ensure lights stay on even if something else turned them off
+    //--- Called every loop to ensure camera slot stays updated
     private void updateTargetLights(int tagId)
     {
         switch (tagId)
         {
             case TAG_BLUE_TARGET:
-                _lights.setAll(Lights.Color.BLUE);
+                _lights.setCameraSlot(Lights.Color.BLUE);
                 break;
             case TAG_RED_TARGET:
-                _lights.setAll(Lights.Color.RED);
+                _lights.setCameraSlot(Lights.Color.RED);
                 break;
             //--- Don't update sequence lights here - they should only be set once on detection
         }
