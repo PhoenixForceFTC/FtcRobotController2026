@@ -122,7 +122,7 @@ public class TeleOp_Beta extends LinearOpMode
     private boolean _gp2LeftTriggerPressed = false;
     
     //--- RPM for auto-fire (uses LONG distance lookup)
-    private static final double AUTO_FIRE_RPM = 3800.0;  // RPM for 110" distance
+    private static final double AUTO_FIRE_RPM = 3000.0;  // RPM for 110" distance
     
     //--- Turn angles for auto-fire sequences
     private static final double TURN_RIGHT_ANGLE = 154.0;  // Degrees to turn right

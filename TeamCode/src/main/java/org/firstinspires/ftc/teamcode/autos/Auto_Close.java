@@ -72,11 +72,13 @@ public class Auto_Close extends LinearOpMode {
 
     //--- Parking position selection
     private enum ParkPosition { LEVER, FRONT }
-    private ParkPosition selectedPark = ParkPosition.LEVER;  // Default to lever
+    //private ParkPosition selectedPark = ParkPosition.LEVER;  // Default to lever
+    private ParkPosition selectedPark = ParkPosition.FRONT;  // Default to lever
 
     //--- Stack selection (how many stacks to collect before parking)
     private enum StackSelection { PRELOADS_ONLY, STACK_1, STACK_2, STACK_3 }
-    private StackSelection selectedStacks = StackSelection.STACK_3;  // Default to all stacks
+    //private StackSelection selectedStacks = StackSelection.STACK_3;  // Default to all stacks
+    private StackSelection selectedStacks = StackSelection.PRELOADS_ONLY;
     private boolean dpadLeftPressed = false;
     private boolean dpadRightPressed = false;
 
@@ -248,19 +250,19 @@ public class Auto_Close extends LinearOpMode {
             telemetry.addData("=== ALLIANCE SELECTION ===", "");
             telemetry.addData("Press", "X=BLUE, B=RED");
             telemetry.addData(">>> SELECTED", selectedAlliance);
-            telemetry.addLine("");
+            //telemetry.addLine("");
             telemetry.addData("=== PARKING POSITION ===", "");
             telemetry.addData("Press", "Y=IN FRONT, A=BY LEVER");
             telemetry.addData(">>> PARK", selectedPark);
-            telemetry.addLine("");
+            //telemetry.addLine("");
             telemetry.addData("=== STACK SELECTION ===", "");
             telemetry.addData("Dpad Left/Right", "Fewer/More stacks");
             telemetry.addData(">>> COLLECT", selectedStacks);
-            telemetry.addLine("");
+            //telemetry.addLine("");
             telemetry.addData("=== START DELAY ===", "");
             telemetry.addData("Dpad Up/Down", "+/- 1 second");
             telemetry.addData(">>> DELAY", "%d seconds", startDelaySeconds);
-            telemetry.addLine("");
+            //telemetry.addLine("");
             telemetry.addData("=== SEQUENCE DETECTION ===", "");
             telemetry.addData("Camera Connected", robot.camera.isConnected());
             telemetry.addData("Last Tag", robot.camera.getLastDetectedTag());
@@ -312,7 +314,9 @@ public class Auto_Close extends LinearOpMode {
     private void runBlueAlliance() 
     {
         //--- Starting position (Blue side) - facing toward obelisk for AprilTag detection
-        Pose2d startPose = pose(-55, -45, 55);
+        //Pose2d startPose = pose(-55, -45, 55);
+
+        Pose2d startPose = pose(-38, -53, 90);
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
 
         //========================================================================
@@ -326,7 +330,15 @@ public class Auto_Close extends LinearOpMode {
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Align to shoot
-                .strafeToSplineHeading(pos(-33.5, -36.5), degreeHeading(227))
+                //-34 -28
+                //-32 -29
+                //-31 -28
+                //-30 -28
+                //.strafeToSplineHeading(pos(-30, -28), degreeHeading(227))
+                //.waitSeconds(2.0)
+                //.strafeToSplineHeading(pos(-32, -30), degreeHeading(227))
+                //.waitSeconds(2.0)
+                .strafeToSplineHeading(pos(-33, -31), degreeHeading(227))
                 //--- Wait for flywheel to get up to speed, then fire in sequence
                 .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Preloads", fireLog))
                 .build()
