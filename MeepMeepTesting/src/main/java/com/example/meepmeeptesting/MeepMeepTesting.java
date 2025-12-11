@@ -21,8 +21,11 @@ public class MeepMeepTesting {
 
         myBot.runAction(myBot.getDrive()
                 //--- starting position
-                .actionBuilder(new Pose2d(-38, -53, Math.toRadians(90)))
-                //.waitSeconds(2)
+                //.actionBuilder(new Pose2d(-38, -53, Math.toRadians(90)))
+                .actionBuilder(new Pose2d(-36, -36, Math.toRadians(235)))
+                .waitSeconds(2)
+                .strafeToSplineHeading(new Vector2d(-50, -20), Math.toRadians(270))
+                .waitSeconds(2)
                 //--- align to shoot
                 .strafeToSplineHeading(new Vector2d(-36, -36), Math.toRadians(235))
                 .waitSeconds(1) //--- shoot (1-3)

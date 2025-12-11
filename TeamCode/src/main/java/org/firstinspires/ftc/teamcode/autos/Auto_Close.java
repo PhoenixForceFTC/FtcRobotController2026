@@ -330,14 +330,6 @@ public class Auto_Close extends LinearOpMode {
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Align to shoot
-                //-34 -28
-                //-32 -29
-                //-31 -28
-                //-30 -28
-                //.strafeToSplineHeading(pos(-30, -28), degreeHeading(227))
-                //.waitSeconds(2.0)
-                //.strafeToSplineHeading(pos(-32, -30), degreeHeading(227))
-                //.waitSeconds(2.0)
                 .strafeToSplineHeading(pos(-33, -31), degreeHeading(227))
                 //--- Wait for flywheel to get up to speed, then fire in sequence
                 .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM_1_BALL, "Preloads", fireLog))
@@ -442,7 +434,7 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(parkStartPose)
                     //--- Drive to front parking position
-                    .strafeToSplineHeading(pos(0, -36), degreeHeading(270))
+                    .strafeToSplineHeading(pos(-50, -20), degreeHeading(270))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     .build()
