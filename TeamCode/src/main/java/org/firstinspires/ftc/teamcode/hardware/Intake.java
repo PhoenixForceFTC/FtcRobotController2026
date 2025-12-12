@@ -579,8 +579,8 @@ public class Intake
     //--- Run intake at configured speed
     public void intake()
     {
-        //--- Reset buffers to prevent false ball detection from stale data
-        resetDistanceBuffers();
+        //--- NOTE: Don't reset buffers here - let sensors keep updating naturally
+        //--- Resetting causes issues in auto where sensors aren't polled during trajectories
         _intakeOn = true;
         _motorIntake.setPower(INTAKE_SPEED);
         
@@ -594,8 +594,7 @@ public class Intake
     //--- Run intake at custom speed
     public void intake(double power)
     {
-        //--- Reset buffers to prevent false ball detection from stale data
-        resetDistanceBuffers();
+        //--- NOTE: Don't reset buffers here - let sensors keep updating naturally
         _intakeOn = true;
         _motorIntake.setPower(Math.abs(power));
         

@@ -999,6 +999,30 @@ public class AutoActions {
         }
     }
 
+    /**
+     * Log a message to the fire log with timestamp
+     */
+    public static class LogMessage implements Action {
+        private final String message;
+        private final java.util.List<String> fireLog;
+        private final ElapsedTime autoTimer;
+
+        public LogMessage(String message, java.util.List<String> fireLog, ElapsedTime autoTimer) {
+            this.message = message;
+            this.fireLog = fireLog;
+            this.autoTimer = autoTimer;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (fireLog != null) {
+                String timestamp = (autoTimer != null) ? String.format(" %.0fs", autoTimer.seconds()) : "";
+                fireLog.add(message + timestamp);
+            }
+            return false;
+        }
+    }
+
     //endregion
 
     //region --- Compound Actions ---

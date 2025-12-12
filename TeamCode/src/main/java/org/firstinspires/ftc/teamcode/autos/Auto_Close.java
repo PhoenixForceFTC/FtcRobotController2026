@@ -366,7 +366,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(-12, -40), degreeHeading(270), slow(), slowAccel())
+                    .strafeToSplineHeading(pos(-12, -40), degreeHeading(270), verySlow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
@@ -393,7 +393,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(12, -40), degreeHeading(270), slow(), slowAccel())
+                    .strafeToSplineHeading(pos(12, -40), degreeHeading(270), verySlow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
@@ -419,7 +419,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(36, -40), degreeHeading(270), slow(), slowAccel())
+                    .strafeToSplineHeading(pos(36, -40), degreeHeading(270), verySlow(), slowAccel())
                     .build()
             );
         }
@@ -463,6 +463,9 @@ public class Auto_Close extends LinearOpMode {
         //--- Stop flywheel and intake
         Actions.runBlocking(new AutoActions.FlywheelStop(robot));
         Actions.runBlocking(new AutoActions.IntakeStop(robot));
+        
+        //--- Log completion time
+        Actions.runBlocking(new AutoActions.LogMessage("DONE", fireLog, autoTimer));
     }
 
     //========================================================================
@@ -610,6 +613,9 @@ public class Auto_Close extends LinearOpMode {
         //--- Stop flywheel and intake
         Actions.runBlocking(new AutoActions.FlywheelStop(robot));
         Actions.runBlocking(new AutoActions.IntakeStop(robot));
+        
+        //--- Log completion time
+        Actions.runBlocking(new AutoActions.LogMessage("DONE", fireLog, autoTimer));
     }
 
     //========================================================================
