@@ -204,11 +204,15 @@ public class TeleOp_Beta extends LinearOpMode
             //------------------------------------------------------------------------------------------
             //--- Flywheel - Auto-adjust to suggested velocity based on distance and ball count
             //--- getSuggestedVelocity returns: >0 for valid RPM, 0 when paused, -1 if no distance
+            //--- Skip when kickers are firing - they control the velocity during fire sequences
             //------------------------------------------------------------------------------------------
-            double suggestedRPM = _robot.camera.getSuggestedVelocity(_robot.intake.getBallCount());
-            if (suggestedRPM >= 0)
+            if (!_robot.kickers.isFiringActive())
             {
-                _robot.flywheel.setVelocity(suggestedRPM);  // 0 = stop when paused
+                double suggestedRPM = _robot.camera.getSuggestedVelocity(_robot.intake.getBallCount());
+                if (suggestedRPM >= 0)
+                {
+                    _robot.flywheel.setVelocity(suggestedRPM);  // 0 = stop when paused
+                }
             }
             //_robot.flywheel.testVelocities();
 

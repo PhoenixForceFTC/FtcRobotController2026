@@ -674,6 +674,13 @@ public class Kickers
         return _targetVelocity;
     }
 
+    //--- Check if kickers are actively firing or waiting for velocity
+    //--- Use this to prevent external code from overriding flywheel velocity during firing
+    public boolean isFiringActive()
+    {
+        return _sequenceFiring || _velocityFirePending || _waitingForVelocity || _waitingForAlignment;
+    }
+
     //endregion
 
     //region --- Public Methods - Firing ---
