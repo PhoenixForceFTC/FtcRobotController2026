@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.utils;
 
 import com.acmerobotics.roadrunner.AccelConstraint;
 import com.acmerobotics.roadrunner.AngularVelConstraint;
+import com.acmerobotics.roadrunner.MecanumKinematics;
 import com.acmerobotics.roadrunner.MinVelConstraint;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ProfileAccelConstraint;
@@ -11,6 +12,11 @@ import org.firstinspires.ftc.teamcode.MecanumDrive;
 import java.util.Arrays;
 
 public class AutoUtils {
+
+   //--- Kinematics for wheel velocity constraint (same as MecanumDrive uses)
+   private static final MecanumKinematics kinematics = new MecanumKinematics(
+           MecanumDrive.PARAMS.inPerTick * MecanumDrive.PARAMS.trackWidthTicks, 
+           MecanumDrive.PARAMS.inPerTick / MecanumDrive.PARAMS.lateralInPerTick);
 
    //==========================================================================
    //--- Static helper methods for cleaner trajectory code
@@ -62,6 +68,7 @@ public class AutoUtils {
     */
    public static VelConstraint speed(double speedMultiplier) {
        return new MinVelConstraint(Arrays.asList(
+               kinematics.new WheelVelConstraint(MecanumDrive.PARAMS.maxWheelVel * speedMultiplier),
                new AngularVelConstraint(MecanumDrive.PARAMS.maxAngVel * speedMultiplier)
        ));
    }
@@ -82,10 +89,12 @@ public class AutoUtils {
    }
 
    //--- Convenience speed presets
+   public static VelConstraint verySlow() { return speed(0.1); }
    public static VelConstraint slow() { return speed(0.5); }
    public static VelConstraint medium() { return speed(0.7); }
    public static VelConstraint fast() { return speed(1.0); }
 
+   public static AccelConstraint verySlowAccel() { return accel(0.25); }
    public static AccelConstraint slowAccel() { return accel(0.5); }
    public static AccelConstraint mediumAccel() { return accel(0.7); }
    public static AccelConstraint fastAccel() { return accel(1.0); }

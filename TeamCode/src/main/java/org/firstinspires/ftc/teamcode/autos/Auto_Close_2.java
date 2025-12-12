@@ -1,9 +1,17 @@
 package org.firstinspires.ftc.teamcode.autos;
 
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.degreeHeading;
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pos;
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slow;
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slowAccel;
+
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.MecanumDrive;
 import org.firstinspires.ftc.teamcode.RobotHardware;
@@ -12,15 +20,6 @@ import org.firstinspires.ftc.teamcode.hardware.Lights;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import com.qualcomm.robotcore.util.ElapsedTime;
-
-import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pos;
-import static org.firstinspires.ftc.teamcode.utils.AutoUtils.degreeHeading;
-import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
-import static org.firstinspires.ftc.teamcode.utils.AutoUtils.verySlow;
-import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slow;
-import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slowAccel;
 
 /**
  * Auto_Close
@@ -43,8 +42,9 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slowAccel;
  * 3. Opens second stack, picks up, shoots (7-9)
  * 4. Picks up third stack, parks
  */
-@Autonomous(name = "Auto: Close", group = "Auto")
-public class Auto_Close extends LinearOpMode {
+@Disabled
+@Autonomous(name = "Auto: Close (side)", group = "Auto")
+public class Auto_Close_2 extends LinearOpMode {
 
     //--- Robot hardware
     private RobotHardware robot;
@@ -74,6 +74,7 @@ public class Auto_Close extends LinearOpMode {
 
     //--- Stack selection (how many stacks to collect before parking)
     private enum StackSelection { PRELOADS_ONLY, STACK_1, STACK_2, STACK_3 }
+    //private StackSelection selectedStacks = StackSelection.STACK_3;  // Default to all stacks
     private StackSelection selectedStacks = StackSelection.STACK_3;
     private boolean dpadLeftPressed = false;
     private boolean dpadRightPressed = false;
@@ -353,12 +354,11 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(pose(-36, -36, 235))
                     //--- Align with balls
-                    .strafeToSplineHeading(pos(-12, -16), degreeHeading(270))
-                    .strafeToSplineHeading(pos(-12, -27), degreeHeading(270))
+                    .strafeToSplineHeading(pos(-32, -47), degreeHeading(10))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(-12, -40), degreeHeading(270), verySlow(), slowAccel())
+                    .strafeToSplineHeading(pos(-16, -47), degreeHeading(0), slow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
@@ -380,12 +380,11 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(pose(-36, -36, 235))
                     //--- Align with balls
-                    .strafeToSplineHeading(pos(12, -16), degreeHeading(270))
-                    .strafeToSplineHeading(pos(12, -27), degreeHeading(270))
+                    .strafeToSplineHeading(pos(-9, -47), degreeHeading(10))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(12, -40), degreeHeading(270), verySlow(), slowAccel())
+                    .strafeToSplineHeading(pos(7, -47), degreeHeading(0), slow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
@@ -406,12 +405,11 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(pose(-36, -36, 235))
                     //--- Align with balls
-                    .strafeToSplineHeading(pos(36, -16), degreeHeading(270))
-                    .strafeToSplineHeading(pos(36, -27), degreeHeading(270))
+                    .strafeToSplineHeading(pos(14, -47), degreeHeading(10))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(36, -40), degreeHeading(270), verySlow(), slowAccel())
+                    .strafeToSplineHeading(pos(30, -47), degreeHeading(0), slow(), slowAccel())
                     .build()
             );
         }
