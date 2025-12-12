@@ -772,6 +772,12 @@ public class Kickers
     //--- Fire kickers in sequence based on ball colors and selected sequence
     public void fireSequence()
     {
+        //--- Read current ball colors from intake sensors before calculating firing order
+        if (_intake != null)
+        {
+            configureBallColorsFromIntake();
+        }
+        
         //--- Log the shot (uses 1-ball RPM since firing one at a time)
         logFire("SEQ", 1);
         
@@ -828,6 +834,33 @@ public class Kickers
         }
     }
 
+    //--- Get a formatted string of all ball colors from intake sensors (for telemetry)
+    //--- Returns "G P P" format based on live sensor readings
+    //--- Shows: G=Green, P=Purple, ?=None/Unknown
+    public String getBallColorsFromSensors()
+    {
+        if (_intake == null) return "? ? ?";
+        
+        Intake.BallColor[] colors = _intake.getAllShooterBallColors();
+        return String.format("%s %s %s",
+                colorToChar(colors[0]),
+                colorToChar(colors[1]),
+                colorToChar(colors[2]));
+    }
+    
+    //--- Convert Intake.BallColor to display character
+    private String colorToChar(Intake.BallColor color)
+    {
+        switch (color)
+        {
+            case GREEN: return "G";
+            case PURPLE: return "P";
+            case NONE: return "-";
+            case UNKNOWN: return "?";
+            default: return "X";
+        }
+    }
+
     //endregion
 
     //region --- Public Methods - Sequence Configuration ---
@@ -866,6 +899,41 @@ public class Kickers
     public boolean isSequenceComplete()
     {
         return !_sequenceFiring && !_velocityFirePending && !_waitingForAlignment;
+    }
+
+    //--- Get the current sequence step (0-2, or 3 if complete)
+    public int getSequenceStep()
+    {
+        return _sequenceStep;
+    }
+
+    //--- Check if sequence firing is in progress
+    public boolean isSequenceFiring()
+    {
+        return _sequenceFiring;
+    }
+
+    //--- Get the firing order array (1=Left, 2=Middle, 3=Right)
+    public int[] getFiringOrder()
+    {
+        return _firingOrder;
+    }
+
+    //--- Get the expected ball color for a given step in the sequence (0-2)
+    public BallColor getExpectedColorForStep(int step)
+    {
+        if (step < 0 || step > 2) return BallColor.PURPLE;
+        switch (_sequence)
+        {
+            case GPP:
+                return (step == 0) ? BallColor.GREEN : BallColor.PURPLE;
+            case PPG:
+                return (step == 2) ? BallColor.GREEN : BallColor.PURPLE;
+            case PGP:
+                return (step == 1) ? BallColor.GREEN : BallColor.PURPLE;
+            default:
+                return BallColor.PURPLE;
+        }
     }
 
     //endregion
@@ -1007,9 +1075,15 @@ public class Kickers
             }
         }
         
-        //--- Format: "ALL 3b @ 36" | 2850/3000 RPM"
-        String entry = String.format("%s %db @ %s\" | %.0f/%.0f", 
-                type, actualBalls, distance, actualRPM, targetRPM);
+        //--- Get ball colors from kicker state (already read from intake)
+        String ballColors = String.format("%s%s%s",
+                _ballColor1 == BallColor.GREEN ? "G" : "P",
+                _ballColor2 == BallColor.GREEN ? "G" : "P",
+                _ballColor3 == BallColor.GREEN ? "G" : "P");
+        
+        //--- Format: "ALL 3b @ 36" | 2850/3000 RPM [GPP]"
+        String entry = String.format("%s %db @ %s\" | %.0f/%.0f [%s]", 
+                type, actualBalls, distance, actualRPM, targetRPM, ballColors);
         
         //--- Add to log (newest first)
         _fireLog.add(0, entry);

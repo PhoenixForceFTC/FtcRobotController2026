@@ -554,6 +554,13 @@ public class Intake
 
     //region --- Public Methods ---
 
+    //--- Force ball detection regardless of intake state (for autonomous pre-match)
+    //--- Call this in a loop to update sensor readings when intake is NOT running
+    public void updateBallDetection()
+    {
+        detectBalls();
+    }
+
     //--- Reset distance buffers to prevent false ball detection
     private void resetDistanceBuffers()
     {

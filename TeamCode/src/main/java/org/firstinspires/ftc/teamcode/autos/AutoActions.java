@@ -254,6 +254,7 @@ public class AutoActions {
         private int state = 0;
         private double timeFirstStable = -1;
         private boolean rpmSet = false;
+        private int lastLoggedStep = -1;  // Track which step we last logged
         private static final double FLYWHEEL_TIMEOUT = 6.0;
         private static final double STABLE_TIME = 0.1;
         private static final double RPM_TOLERANCE = 75.0;
@@ -285,6 +286,7 @@ public class AutoActions {
             switch (state) {
                 case 0:  // Wait for flywheel to be continuously stable
                     robot.flywheel.run();
+                    robot.intake.updateBallDetection();  // Force sensor update even when intake off
                     double currentRPM = robot.flywheel.getCurrentRPM();
                     double flywheelTarget = robot.flywheel.getTargetRPM();
                     boolean atTarget = Math.abs(currentRPM - flywheelTarget) <= RPM_TOLERANCE;
@@ -300,10 +302,6 @@ public class AutoActions {
                     boolean timedOut = timer.seconds() > FLYWHEEL_TIMEOUT;
                     
                     if (stable || timedOut) {
-                        // Log the firing info
-                        double firingRPM = robot.flywheel.getCurrentRPM();
-                        double totalTime = timer.seconds();
-                        
                         // Read ball colors from intake and configure kickers
                         configureBallColorsFromIntake();
                         
@@ -311,16 +309,14 @@ public class AutoActions {
                         configureSequenceFromCamera();
                         
                         if (fireLog != null && label != null) {
-                            String reason = timedOut && !stable ? " (TIMEOUT!)" : " (stable)";
-                            String hitInfo = timeFirstStable >= 0 
-                                ? String.format(" [stable@%.2fs, fire@%.2fs]", timeFirstStable, totalTime)
-                                : String.format(" [never stable, fire@%.2fs]", totalTime);
-                            String seqInfo = String.format(" Seq:%s", robot.kickers.getSequence());
-                            fireLog.add(String.format("%s: %.0f RPM%s%s%s", label, firingRPM, reason, hitInfo, seqInfo));
+                            String reason = timedOut && !stable ? "TIMEOUT" : "stable";
+                            String seqInfo = String.format("Seq:%s", robot.kickers.getSequence());
+                            fireLog.add(String.format("%s START: target=%.0f (%s) %s", label, targetRPM, reason, seqInfo));
                         }
                         
                         // Start the sequence firing
                         robot.kickers.fireSequence();
+                        lastLoggedStep = -1;  // Reset for tracking individual fires
                         state = 1;
                     }
                     telemetryPacket.put("Flywheel Target", robot.flywheel.getTargetRPM());
@@ -331,13 +327,68 @@ public class AutoActions {
 
                 case 1:  // Wait for sequence to complete
                     robot.flywheel.run();  // Keep flywheel running for velocity recovery
+                    robot.intake.updateBallDetection();  // Keep color sensors updated
                     robot.kickers.run();   // Run kicker state machine
                     
+                    // Log each individual ball fire as it happens
+                    int currentStep = robot.kickers.getSequenceStep();
+                    if (currentStep > lastLoggedStep && currentStep <= 3) {
+                        // A new ball just fired (step increments after fire completes)
+                        double actualRPM = robot.flywheel.getCurrentRPM();
+                        double target = robot.flywheel.getTargetRPM();
+                        int[] order = robot.kickers.getFiringOrder();
+                        int kickerFired = (lastLoggedStep >= 0 && lastLoggedStep < 3) ? order[lastLoggedStep] : 0;
+                        String kickerName = (kickerFired == 1) ? "L" : (kickerFired == 2) ? "M" : (kickerFired == 3) ? "R" : "?";
+                        
+                        // Get ball color at kicker position and expected color for this step
+                        String detectedColor = "?";
+                        String expectedColor = "?";
+                        if (kickerFired >= 1 && kickerFired <= 3 && lastLoggedStep >= 0) {
+                            org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor detected = 
+                                robot.kickers.getBallColor(kickerFired);
+                            org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor expected = 
+                                robot.kickers.getExpectedColorForStep(lastLoggedStep);
+                            detectedColor = (detected == org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN) ? "G" : "P";
+                            expectedColor = (expected == org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN) ? "G" : "P";
+                        }
+                        
+                        if (fireLog != null && label != null && lastLoggedStep >= 0) {
+                            fireLog.add(String.format("%s #%d (%s): %.0f/%.0f RPM %s/%s", 
+                                label, lastLoggedStep + 1, kickerName, actualRPM, target, detectedColor, expectedColor));
+                        }
+                        lastLoggedStep = currentStep;
+                    }
+                    
+                    // Also log the first ball when sequence starts
+                    if (lastLoggedStep == -1 && robot.kickers.isSequenceFiring()) {
+                        lastLoggedStep = 0;
+                    }
+                    
                     if (robot.kickers.isSequenceComplete()) {
+                        // Log the final (3rd) ball
+                        if (fireLog != null && label != null && lastLoggedStep == 2) {
+                            double actualRPM = robot.flywheel.getCurrentRPM();
+                            double target = robot.flywheel.getTargetRPM();
+                            int[] order = robot.kickers.getFiringOrder();
+                            int kickerFired = order[2];
+                            String kickerName = (kickerFired == 1) ? "L" : (kickerFired == 2) ? "M" : (kickerFired == 3) ? "R" : "?";
+                            
+                            // Get ball color at kicker position and expected color for step 2
+                            org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor detected = 
+                                robot.kickers.getBallColor(kickerFired);
+                            org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor expected = 
+                                robot.kickers.getExpectedColorForStep(2);
+                            String detectedColor = (detected == org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN) ? "G" : "P";
+                            String expectedColor = (expected == org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN) ? "G" : "P";
+                            
+                            fireLog.add(String.format("%s #3 (%s): %.0f/%.0f RPM %s/%s", 
+                                label, kickerName, actualRPM, target, detectedColor, expectedColor));
+                        }
                         state = 2;
                         return false;  // Done
                     }
                     telemetryPacket.put("Sequence", "Firing...");
+                    telemetryPacket.put("Step", currentStep);
                     return true;
 
                 default:

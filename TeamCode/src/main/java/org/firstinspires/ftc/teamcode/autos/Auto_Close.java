@@ -129,6 +129,9 @@ public class Auto_Close extends LinearOpMode {
         
         while (!isStarted() && !isStopRequested()) 
         {
+            //--- Update ball color sensors (force detection even when intake not running)
+            robot.intake.updateBallDetection();
+            
             //--- Check for alliance selection buttons on gamepad2
             if (gamepad2.x) 
             {
@@ -264,6 +267,8 @@ public class Auto_Close extends LinearOpMode {
             telemetry.addData("Camera Connected", robot.camera.isConnected());
             telemetry.addData("Last Tag", robot.camera.getLastDetectedTag());
             telemetry.addData(">>> SEQUENCE", detectedSequence);
+            telemetry.addData("=== BALL COLORS (L M R) ===", "");
+            telemetry.addData(">>> SENSING", robot.kickers.getBallColorsFromSensors());
             telemetry.addLine("");
             telemetry.addData("Status", "Waiting for START...");
             telemetry.update();
