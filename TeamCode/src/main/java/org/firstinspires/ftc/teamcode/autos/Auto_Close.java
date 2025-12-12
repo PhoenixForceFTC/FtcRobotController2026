@@ -495,13 +495,13 @@ public class Auto_Close extends LinearOpMode {
     }
 
     //========================================================================
-    //--- RED ALLIANCE ROUTINE
+    //--- RED ALLIANCE ROUTINE (mirrored from Blue)
     //========================================================================
     private void runRedAlliance() 
     {
-        //--- Starting position (Red side - mirrored) - facing toward obelisk for AprilTag detection
-        //--- Blue: (-55, -45, 55°) → Red: (+55, -45, 125°)
-        Pose2d startPose = pose(55, -45, 125);
+        //--- Starting position (Red side - mirrored from Blue)
+        //--- Blue: (-38, -53, 90°) → Red: (-38, 53, 270°)
+        Pose2d startPose = pose(-38, 53, 270);
         MecanumDrive drive = new MecanumDrive(hardwareMap, startPose);
 
         //========================================================================
@@ -509,13 +509,15 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(startPose)
-                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_3_RPM))
-                .waitSeconds(2.0)
+                //--- Start flywheel while driving (use highest RPM for 3 balls)
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_3_RPM-50))
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
-                //--- Blue: (-33.5, -36.5, 227°) → Red: (+33.5, -36.5, 313°)
-                .strafeToSplineHeading(pos(33.5, -36.5), degreeHeading(313))
+                //--- Align to shoot
+                //--- Blue: (-33, -31, 227°) → Red: (-33, 31, 133°)
+                .strafeToSplineHeading(pos(-33, 31), degreeHeading(133))
                 //--- Fire based on selected firing mode
+                .waitSeconds(1.0)  //--- Give flywheel time to spin up
                 .stopAndAdd(getFireAction("Preloads"))
                 .build()
         );
@@ -528,20 +530,18 @@ public class Auto_Close extends LinearOpMode {
             selectedStacks == StackSelection.STACK_3)
         {
             Actions.runBlocking(
-                drive.actionBuilder(pose(36, -36, 305))
-                    //--- Align with balls
-                    //--- Blue: (-32, -50, 10°) → Red: (+32, -50, 170°)
-                    .strafeToSplineHeading(pos(32, -50), degreeHeading(170))
+                drive.actionBuilder(pose(-36, 36, 125))
+                    //--- Align with balls (facing 90° to drive toward positive Y)
+                    //--- Blue: (-12, -16 to -40, 270°) → Red: (-12, 16 to 40, 90°)
+                    .strafeToSplineHeading(pos(-12, 16), degreeHeading(90))
+                    .strafeToSplineHeading(pos(-12, 27), degreeHeading(90))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    //--- Blue: (-16, -50, 0°) → Red: (+16, -50, 180°)
-                    .strafeToSplineHeading(pos(16, -50), degreeHeading(180), slow(), slowAccel())
-                    //--- Reverse intake while moving to shoot position
-                    //.stopAndAdd(new AutoActions.IntakeReverse(robot))
+                    .strafeToSplineHeading(pos(-12, 40), degreeHeading(90), verySlow(), slowAccel())
                     //--- Align to shoot
-                    //--- Blue: (-36, -36, 220°) → Red: (+36, -36, 320°)
-                    .strafeToSplineHeading(pos(36, -36), degreeHeading(320))
+                    //--- Blue: (-33, -31, 220°) → Red: (-33, 31, 140°)
+                    .strafeToSplineHeading(pos(-33, 31), degreeHeading(140))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire based on selected firing mode
@@ -557,20 +557,18 @@ public class Auto_Close extends LinearOpMode {
             selectedStacks == StackSelection.STACK_3)
         {
             Actions.runBlocking(
-                drive.actionBuilder(pose(36, -36, 305))
-                    //--- Align with balls
-                    //--- Blue: (-9, -50, 10°) → Red: (+9, -50, 170°)
-                    .strafeToSplineHeading(pos(9, -50), degreeHeading(170))
+                drive.actionBuilder(pose(-36, 36, 125))
+                    //--- Align with balls (facing 90° to drive toward positive Y)
+                    //--- Blue: (12, -16 to -40, 270°) → Red: (12, 16 to 40, 90°)
+                    .strafeToSplineHeading(pos(12, 16), degreeHeading(90))
+                    .strafeToSplineHeading(pos(12, 27), degreeHeading(90))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    //--- Blue: (7, -50, 0°) → Red: (-7, -50, 180°)
-                    .strafeToSplineHeading(pos(-7, -50), degreeHeading(180), slow(), slowAccel())
-                    //--- Reverse intake while moving to shoot position
-                    //.stopAndAdd(new AutoActions.IntakeReverse(robot))
+                    .strafeToSplineHeading(pos(12, 40), degreeHeading(90), verySlow(), slowAccel())
                     //--- Align to shoot
-                    //--- Blue: (-36, -36, 224°) → Red: (+36, -36, 316°)
-                    .strafeToSplineHeading(pos(36, -36), degreeHeading(316))
+                    //--- Blue: (-33, -31, 224°) → Red: (-33, 31, 136°)
+                    .strafeToSplineHeading(pos(-33, 31), degreeHeading(136))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire based on selected firing mode
@@ -585,15 +583,15 @@ public class Auto_Close extends LinearOpMode {
         if (selectedStacks == StackSelection.STACK_3)
         {
             Actions.runBlocking(
-                drive.actionBuilder(pose(36, -36, 305))
-                    //--- Align with balls
-                    //--- Blue: (14, -50, 10°) → Red: (-14, -50, 170°)
-                    .strafeToSplineHeading(pos(-14, -50), degreeHeading(170))
+                drive.actionBuilder(pose(-36, 36, 125))
+                    //--- Align with balls (facing 90° to drive toward positive Y)
+                    //--- Blue: (36, -16 to -40, 270°) → Red: (36, 16 to 40, 90°)
+                    .strafeToSplineHeading(pos(36, 16), degreeHeading(90))
+                    .strafeToSplineHeading(pos(36, 27), degreeHeading(90))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    //--- Blue: (30, -50, 0°) → Red: (-30, -50, 180°)
-                    .strafeToSplineHeading(pos(-30, -50), degreeHeading(180), slow(), slowAccel())
+                    .strafeToSplineHeading(pos(36, 40), degreeHeading(90), verySlow(), slowAccel())
                     .build()
             );
         }
@@ -602,11 +600,11 @@ public class Auto_Close extends LinearOpMode {
         //--- PARK based on selection
         //========================================================================
         //--- Determine starting pose for parking based on which stacks were collected
-        //--- Stack 3: ends at (-30, -50, 180°)
-        //--- Preloads/Stack 1/Stack 2: ends at (36, -36, 305°)
+        //--- Blue Stack 3 ends at (36, -40, 270°) → Red: (36, 40, 90°)
+        //--- Blue other ends at (-36, -36, 235°) → Red: (-36, 36, 125°)
         Pose2d parkStartPose = (selectedStacks == StackSelection.STACK_3) 
-            ? pose(-30, -50, 180) 
-            : pose(36, -36, 305);
+            ? pose(36, 40, 90) 
+            : pose(-36, 36, 125);
 
         if (selectedPark == ParkPosition.LEVER)
         {
@@ -614,8 +612,8 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(parkStartPose)
                     //--- Align to lever position
-                    //--- Blue: (0, -50, 180°) → Red: (0, -50, 0°)
-                    .strafeToSplineHeading(pos(0, -50), degreeHeading(0))
+                    //--- Blue: (0, -50, 180°) → Red: (0, 50, 0°)
+                    .strafeToSplineHeading(pos(0, 50), degreeHeading(0))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     .build()
@@ -627,8 +625,8 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(parkStartPose)
                     //--- Drive to front parking position
-                    //--- Blue: (0, -36, 270°) → Red: (0, -36, 270°) (same position, facing goal)
-                    .strafeToSplineHeading(pos(0, -36), degreeHeading(270))
+                    //--- Blue: (-50, -20, 270°) → Red: (-50, 20, 90°)
+                    .strafeToSplineHeading(pos(-50, 20), degreeHeading(90))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     .build()
