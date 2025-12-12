@@ -12,29 +12,29 @@ import java.util.List;
 public class Kickers
 {
     //region --- Constants ---
-    //--- Servo Positions (adjust these as needed for each kicker)
-    
-    //---- Beta ----
-    // private static final double POSITION_LEFT_DOWN = 0.26;
-    // private static final double POSITION_LEFT_UP = 0.46;
+    //--- Servo Positions - Alpha Robot (version 1)
+    private static final double ALPHA_LEFT_DOWN = 0.51;
+    private static final double ALPHA_LEFT_UP = 0.71;
+    private static final double ALPHA_MIDDLE_DOWN = 0.49;
+    private static final double ALPHA_MIDDLE_UP = 0.71;
+    private static final double ALPHA_RIGHT_DOWN = 0.49;
+    private static final double ALPHA_RIGHT_UP = 0.68;
 
-    // private static final double POSITION_MIDDLE_DOWN = 0.25;
-    // private static final double POSITION_MIDDLE_UP = 0.45;
+    //--- Servo Positions - Beta Robot (version 2)
+    private static final double BETA_LEFT_DOWN = 0.26;
+    private static final double BETA_LEFT_UP = 0.46;
+    private static final double BETA_MIDDLE_DOWN = 0.25;
+    private static final double BETA_MIDDLE_UP = 0.45;
+    private static final double BETA_RIGHT_DOWN = 0.25;
+    private static final double BETA_RIGHT_UP = 0.45;
 
-    // private static final double POSITION_RIGHT_DOWN = 0.25;
-    // private static final double POSITION_RIGHT_UP = 0.45;
-
-    //---- Alpha ----
-    private static final double POSITION_LEFT_DOWN = 0.51;
-    private static final double POSITION_LEFT_UP = 0.71;
-
-    private static final double POSITION_MIDDLE_DOWN = 0.49;
-    private static final double POSITION_MIDDLE_UP = 0.71;
-
-    private static final double POSITION_RIGHT_DOWN = 0.49;
-    private static final double POSITION_RIGHT_UP = 0.68;
-
-    //TODO: add robot version to set values
+    //--- Active servo positions (set based on robot version)
+    private double POSITION_LEFT_DOWN;
+    private double POSITION_LEFT_UP;
+    private double POSITION_MIDDLE_DOWN;
+    private double POSITION_MIDDLE_UP;
+    private double POSITION_RIGHT_DOWN;
+    private double POSITION_RIGHT_UP;
 
     //--- Timing Settings (in seconds)
     private static final double KICK_HOLD_TIME = 0.3;      //--- How long to hold the kick position
@@ -179,6 +179,36 @@ public class Kickers
     //region --- Initialize ---
     public void initialize()
     {
+        //--- Set servo positions based on robot version
+        if (_robotVersion == 2)
+        {
+            //--- Beta robot
+            POSITION_LEFT_DOWN = BETA_LEFT_DOWN;
+            POSITION_LEFT_UP = BETA_LEFT_UP;
+            POSITION_MIDDLE_DOWN = BETA_MIDDLE_DOWN;
+            POSITION_MIDDLE_UP = BETA_MIDDLE_UP;
+            POSITION_RIGHT_DOWN = BETA_RIGHT_DOWN;
+            POSITION_RIGHT_UP = BETA_RIGHT_UP;
+        }
+        else
+        {
+            //--- Alpha robot (default)
+            POSITION_LEFT_DOWN = ALPHA_LEFT_DOWN;
+            POSITION_LEFT_UP = ALPHA_LEFT_UP;
+            POSITION_MIDDLE_DOWN = ALPHA_MIDDLE_DOWN;
+            POSITION_MIDDLE_UP = ALPHA_MIDDLE_UP;
+            POSITION_RIGHT_DOWN = ALPHA_RIGHT_DOWN;
+            POSITION_RIGHT_UP = ALPHA_RIGHT_UP;
+        }
+        
+        //--- Initialize tune values to match active positions
+        _tuneLeftDown = POSITION_LEFT_DOWN;
+        _tuneLeftUp = POSITION_LEFT_UP;
+        _tuneMiddleDown = POSITION_MIDDLE_DOWN;
+        _tuneMiddleUp = POSITION_MIDDLE_UP;
+        _tuneRightDown = POSITION_RIGHT_DOWN;
+        _tuneRightUp = POSITION_RIGHT_UP;
+        
         //--- Set all kickers to down position
         retractAll();
     }

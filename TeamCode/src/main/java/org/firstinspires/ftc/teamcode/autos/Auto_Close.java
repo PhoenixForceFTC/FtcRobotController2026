@@ -327,8 +327,7 @@ public class Auto_Close extends LinearOpMode {
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Align to shoot
-                //.strafeToSplineHeading(pos(-33, -31), degreeHeading(227))
-                .strafeToSplineHeading(pos(-20, -20), degreeHeading(227))
+                .strafeToSplineHeading(pos(-33, -31), degreeHeading(227))
                 //--- Switch camera to TeleOp mode (target detection)
                 .stopAndAdd(new AutoActions.CameraSetTeleOpMode(robot))
                 //--- Auto-aim and fire in sequence
