@@ -402,6 +402,328 @@ public class AutoActions {
     }
 
     /**
+     * Auto-aim using camera, wait for alignment AND flywheel speed, then fire in sequence.
+     * 
+     * This action:
+     * 1. Enables camera auto-alignment (robot rotates to center target in camera view)
+     * 2. Gets distance-based RPM from camera (uses 1-ball table for sequence firing)
+     * 3. Waits for BOTH alignment AND flywheel to reach target
+     * 4. Reads ball colors from intake sensors and configures kickers
+     * 5. Sets the firing sequence from the detected BallSequence
+     * 6. Fires each kicker in the correct order, waiting for velocity recovery between shots
+     * 7. Disables auto-alignment when complete
+     * 
+     * Use this when the robot can see the target and should auto-correct its aim.
+     */
+    public static class AutoAimAndFireSequence implements Action {
+        private final RobotHardware robot;
+        private final String label;
+        private final java.util.List<String> fireLog;
+        private ElapsedTime timer;
+        private ElapsedTime stableTimer;
+        private int state = 0;
+        private double timeFirstStable = -1;
+        private double timeFirstAligned = -1;
+        private boolean initialized = false;
+        private double targetRPM = 0;
+        private static final double TIMEOUT = 6.0;          // Max time for aiming + spinup
+        private static final double STABLE_TIME = 0.1;       // Must be at target continuously
+        private static final double RPM_TOLERANCE = 75.0;    // Wider tolerance for faster firing
+
+        public AutoAimAndFireSequence(RobotHardware robot) {
+            this(robot, null, null);
+        }
+
+        public AutoAimAndFireSequence(RobotHardware robot, String label, java.util.List<String> fireLog) {
+            this.robot = robot;
+            this.label = label;
+            this.fireLog = fireLog;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (timer == null) {
+                timer = new ElapsedTime();
+                stableTimer = new ElapsedTime();
+            }
+            
+            // Initialize on first run
+            if (!initialized) {
+                initialized = true;
+                
+                // Enable auto-alignment for firing
+                robot.camera.enableAutoAlignForFiring();
+                
+                // Get distance-based RPM (1-ball for sequence firing)
+                targetRPM = robot.camera.getSuggestedVelocity(1);
+                if (targetRPM <= 0) {
+                    // Fallback if no distance reading - use a reasonable default
+                    targetRPM = 2400;
+                }
+                robot.flywheel.setVelocity(targetRPM);
+            }
+
+            switch (state) {
+                case 0:  // Wait for alignment AND flywheel to be ready
+                    // Run camera and flywheel updates
+                    robot.camera.run();
+                    robot.flywheel.run();
+                    
+                    // Check alignment status
+                    boolean aligned = robot.camera.isAligned();
+                    if (aligned && timeFirstAligned < 0) {
+                        timeFirstAligned = timer.seconds();
+                    }
+                    
+                    // Check flywheel status
+                    double currentRPM = robot.flywheel.getCurrentRPM();
+                    double flywheelTarget = robot.flywheel.getTargetRPM();
+                    boolean atTarget = Math.abs(currentRPM - flywheelTarget) <= RPM_TOLERANCE;
+                    
+                    if (!atTarget) {
+                        stableTimer.reset();
+                        timeFirstStable = -1;
+                    } else if (timeFirstStable < 0) {
+                        timeFirstStable = timer.seconds();
+                    }
+                    
+                    boolean flywheelReady = atTarget && stableTimer.seconds() > STABLE_TIME;
+                    boolean timedOut = timer.seconds() > TIMEOUT;
+                    
+                    // Fire when both ready OR timeout
+                    if ((aligned && flywheelReady) || timedOut) {
+                        // Log the firing info
+                        double firingRPM = robot.flywheel.getCurrentRPM();
+                        double totalTime = timer.seconds();
+                        
+                        // Read ball colors from intake and configure kickers
+                        configureBallColorsFromIntake();
+                        
+                        // Set the firing sequence from detected sequence
+                        configureSequenceFromCamera();
+                        
+                        if (fireLog != null && label != null) {
+                            String reason = timedOut ? " (TIMEOUT!)" : " (ready)";
+                            String alignInfo = timeFirstAligned >= 0 
+                                ? String.format("align@%.2fs", timeFirstAligned)
+                                : "never aligned";
+                            String rpmInfo = timeFirstStable >= 0 
+                                ? String.format("rpm@%.2fs", timeFirstStable)
+                                : "never stable";
+                            String seqInfo = String.format(" Seq:%s", robot.kickers.getSequence());
+                            fireLog.add(String.format("%s: %.0f RPM [%s, %s] fire@%.2fs%s%s", 
+                                label, firingRPM, alignInfo, rpmInfo, totalTime, reason, seqInfo));
+                        }
+                        
+                        // Start the sequence firing
+                        robot.kickers.fireSequence();
+                        state = 1;
+                    }
+                    
+                    telemetryPacket.put("Aligned", aligned);
+                    telemetryPacket.put("Flywheel Target", robot.flywheel.getTargetRPM());
+                    telemetryPacket.put("Flywheel Current", robot.flywheel.getCurrentRPM());
+                    telemetryPacket.put("Flywheel Ready", flywheelReady);
+                    telemetryPacket.put("Camera Align", robot.camera.getAlignmentInfo());
+                    return true;
+
+                case 1:  // Wait for sequence to complete
+                    robot.camera.run();    // Keep camera running for alignment during firing
+                    robot.flywheel.run();  // Keep flywheel running for velocity recovery
+                    robot.kickers.run();   // Run kicker state machine
+                    
+                    if (robot.kickers.isSequenceComplete()) {
+                        // Disable auto-alignment
+                        robot.camera.disableAutoAlignForFiring();
+                        state = 2;
+                        return false;  // Done
+                    }
+                    telemetryPacket.put("Sequence", "Firing...");
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+        
+        /**
+         * Read ball colors from intake sensors and configure kickers
+         */
+        private void configureBallColorsFromIntake() {
+            org.firstinspires.ftc.teamcode.hardware.Intake.BallColor[] intakeColors = 
+                robot.intake.getAllShooterBallColors();
+            
+            for (int i = 0; i < 3; i++) {
+                org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor kickerColor = 
+                    convertBallColor(intakeColors[i]);
+                robot.kickers.setBallColor(i + 1, kickerColor);
+            }
+        }
+        
+        /**
+         * Convert Intake.BallColor to Kickers.BallColor
+         */
+        private org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor convertBallColor(
+                org.firstinspires.ftc.teamcode.hardware.Intake.BallColor intakeColor) {
+            switch (intakeColor) {
+                case GREEN:
+                    return org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN;
+                case PURPLE:
+                default:
+                    return org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.PURPLE;
+            }
+        }
+        
+        /**
+         * Set the kicker firing sequence based on detected camera sequence
+         */
+        private void configureSequenceFromCamera() {
+            org.firstinspires.ftc.teamcode.hardware.Camera.BallSequence detected = 
+                robot.camera.getDetectedSequence();
+            
+            org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence kickerSequence;
+            switch (detected) {
+                case GPP:
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.GPP;
+                    break;
+                case PGP:
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.PGP;
+                    break;
+                case PPG:
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.PPG;
+                    break;
+                default:
+                    kickerSequence = org.firstinspires.ftc.teamcode.hardware.Kickers.Sequence.GPP;
+                    break;
+            }
+            robot.kickers.setSequence(kickerSequence);
+        }
+    }
+
+    /**
+     * Auto-aim using camera, wait for alignment AND flywheel speed, then fire ALL at once.
+     * 
+     * Similar to AutoAimAndFireSequence but fires all balls at once.
+     * Uses ball count from intake to select appropriate RPM table (1/2/3 balls).
+     */
+    public static class AutoAimAndFireAll implements Action {
+        private final RobotHardware robot;
+        private final String label;
+        private final java.util.List<String> fireLog;
+        private ElapsedTime timer;
+        private ElapsedTime stableTimer;
+        private int state = 0;
+        private double timeFirstStable = -1;
+        private double timeFirstAligned = -1;
+        private boolean initialized = false;
+        private double targetRPM = 0;
+        private int ballCount = 0;
+        private static final double TIMEOUT = 6.0;
+        private static final double STABLE_TIME = 0.1;
+        private static final double FIRE_HOLD_TIME = 0.5;
+        private static final double RPM_TOLERANCE = 75.0;
+
+        public AutoAimAndFireAll(RobotHardware robot) {
+            this(robot, null, null);
+        }
+
+        public AutoAimAndFireAll(RobotHardware robot, String label, java.util.List<String> fireLog) {
+            this.robot = robot;
+            this.label = label;
+            this.fireLog = fireLog;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            if (timer == null) {
+                timer = new ElapsedTime();
+                stableTimer = new ElapsedTime();
+            }
+            
+            if (!initialized) {
+                initialized = true;
+                
+                // Enable auto-alignment for firing
+                robot.camera.enableAutoAlignForFiring();
+                
+                // Get ball count and distance-based RPM
+                ballCount = robot.intake.getBallCount();
+                if (ballCount <= 0) ballCount = 3;  // Assume full if no detection
+                
+                targetRPM = robot.camera.getSuggestedVelocity(ballCount);
+                if (targetRPM <= 0) {
+                    targetRPM = 2600;  // Fallback for 3-ball
+                }
+                robot.flywheel.setVelocity(targetRPM);
+            }
+
+            switch (state) {
+                case 0:  // Wait for alignment AND flywheel
+                    robot.camera.run();
+                    robot.flywheel.run();
+                    
+                    boolean aligned = robot.camera.isAligned();
+                    if (aligned && timeFirstAligned < 0) {
+                        timeFirstAligned = timer.seconds();
+                    }
+                    
+                    double currentRPM = robot.flywheel.getCurrentRPM();
+                    double flywheelTarget = robot.flywheel.getTargetRPM();
+                    boolean atTarget = Math.abs(currentRPM - flywheelTarget) <= RPM_TOLERANCE;
+                    
+                    if (!atTarget) {
+                        stableTimer.reset();
+                        timeFirstStable = -1;
+                    } else if (timeFirstStable < 0) {
+                        timeFirstStable = timer.seconds();
+                    }
+                    
+                    boolean flywheelReady = atTarget && stableTimer.seconds() > STABLE_TIME;
+                    boolean timedOut = timer.seconds() > TIMEOUT;
+                    
+                    if ((aligned && flywheelReady) || timedOut) {
+                        double firingRPM = robot.flywheel.getCurrentRPM();
+                        double totalTime = timer.seconds();
+                        
+                        if (fireLog != null && label != null) {
+                            String reason = timedOut ? " (TIMEOUT!)" : " (ready)";
+                            String alignInfo = timeFirstAligned >= 0 
+                                ? String.format("align@%.2fs", timeFirstAligned)
+                                : "never aligned";
+                            String rpmInfo = timeFirstStable >= 0 
+                                ? String.format("rpm@%.2fs", timeFirstStable)
+                                : "never stable";
+                            fireLog.add(String.format("%s: %.0f RPM, %db [%s, %s] fire@%.2fs%s", 
+                                label, firingRPM, ballCount, alignInfo, rpmInfo, totalTime, reason));
+                        }
+                        
+                        robot.kickers.fireAll();
+                        timer.reset();
+                        state = 1;
+                    }
+                    
+                    telemetryPacket.put("Aligned", aligned);
+                    telemetryPacket.put("Flywheel Target", robot.flywheel.getTargetRPM());
+                    telemetryPacket.put("Flywheel Current", robot.flywheel.getCurrentRPM());
+                    telemetryPacket.put("Flywheel Ready", flywheelReady);
+                    return true;
+
+                case 1:  // Wait for kick to complete
+                    if (timer.seconds() > FIRE_HOLD_TIME) {
+                        robot.kickers.retractAll();
+                        robot.camera.disableAutoAlignForFiring();
+                        state = 2;
+                        return false;
+                    }
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+    }
+
+    /**
      * Retract all kickers to down position
      */
     public static class KickerRetractAll implements Action {
@@ -630,6 +952,58 @@ public class AutoActions {
         @Override
         public boolean run(@NonNull TelemetryPacket telemetryPacket) {
             robot.run();
+            return false;
+        }
+    }
+
+    /**
+     * Set camera to TeleOp mode (target detection - blue/red goals)
+     * Call this before using AutoAimAndFireSequence or AutoAimAndFireAll
+     */
+    public static class CameraSetTeleOpMode implements Action {
+        private final RobotHardware robot;
+
+        public CameraSetTeleOpMode(RobotHardware robot) {
+            this.robot = robot;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            robot.camera.setModeTeleOp();
+            return false;
+        }
+    }
+
+    /**
+     * Set camera to Pre-Match mode (obelisk sequence detection)
+     */
+    public static class CameraSetPreMatchMode implements Action {
+        private final RobotHardware robot;
+
+        public CameraSetPreMatchMode(RobotHardware robot) {
+            this.robot = robot;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            robot.camera.setModePreMatch();
+            return false;
+        }
+    }
+
+    /**
+     * Set camera to Demo mode (any tag detection)
+     */
+    public static class CameraSetDemoMode implements Action {
+        private final RobotHardware robot;
+
+        public CameraSetDemoMode(RobotHardware robot) {
+            this.robot = robot;
+        }
+
+        @Override
+        public boolean run(@NonNull TelemetryPacket telemetryPacket) {
+            robot.camera.setModeDemo();
             return false;
         }
     }
