@@ -68,14 +68,13 @@ public class Auto_Close extends LinearOpMode {
     private Alliance selectedAlliance = Alliance.BLUE;  // Default to blue
 
     //--- Parking position selection
-    private enum ParkPosition { LEVER, FRONT }
-    //private ParkPosition selectedPark = ParkPosition.LEVER;  // Default to lever
-    private ParkPosition selectedPark = ParkPosition.FRONT;  // Default to lever
+    private enum ParkPosition { LEVER, FRONT, NONE }
+    private ParkPosition selectedPark = ParkPosition.NONE;  // Default to front
 
     //--- Stack selection (how many stacks to collect before parking)
     private enum StackSelection { PRELOADS_ONLY, STACK_1, STACK_2, STACK_3 }
     //private StackSelection selectedStacks = StackSelection.STACK_3;  // Default to all stacks
-    private StackSelection selectedStacks = StackSelection.PRELOADS_ONLY;
+    private StackSelection selectedStacks = StackSelection.STACK_1;
     private boolean dpadLeftPressed = false;
     private boolean dpadRightPressed = false;
 
@@ -177,6 +176,10 @@ public class Auto_Close extends LinearOpMode {
             {
                 selectedPark = ParkPosition.LEVER;
             }
+            else if (gamepad2.left_bumper)
+            {
+                selectedPark = ParkPosition.NONE;
+            }
 
             //--- Adjust start delay with dpad up/down (with debounce)
             if (gamepad2.dpad_up)
@@ -252,7 +255,7 @@ public class Auto_Close extends LinearOpMode {
             telemetry.addData(">>> SELECTED", selectedAlliance);
             //telemetry.addLine("");
             telemetry.addData("=== PARKING POSITION ===", "");
-            telemetry.addData("Press", "Y=IN FRONT, A=BY LEVER");
+            telemetry.addData("Press", "Y=FRONT, A=LEVER, LB=NONE");
             telemetry.addData(">>> PARK", selectedPark);
             //telemetry.addLine("");
             telemetry.addData("=== STACK SELECTION ===", "");
@@ -327,7 +330,7 @@ public class Auto_Close extends LinearOpMode {
         Actions.runBlocking(
             drive.actionBuilder(startPose)
                 //--- Start flywheel while driving
-                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM+100))
                 .waitSeconds(2.0)  //--- Give flywheel time to spin up
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
@@ -348,15 +351,15 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(pose(-36, -36, 235))
                     //--- Align with balls
-                    .strafeToSplineHeading(pos(-32, -50), degreeHeading(10))
+                    .strafeToSplineHeading(pos(-32, -47), degreeHeading(10))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(-16, -50), degreeHeading(0), slow(), slowAccel())
+                    .strafeToSplineHeading(pos(-16, -47), degreeHeading(0), slow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
-                    .strafeToSplineHeading(pos(-36, -36), degreeHeading(220))
+                    .strafeToSplineHeading(pos(-33, -31), degreeHeading(220))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire in sequence based on detected ball colors
@@ -374,15 +377,15 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(pose(-36, -36, 235))
                     //--- Align with balls
-                    .strafeToSplineHeading(pos(-9, -50), degreeHeading(10))
+                    .strafeToSplineHeading(pos(-9, -47), degreeHeading(10))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(7, -50), degreeHeading(0), slow(), slowAccel())
+                    .strafeToSplineHeading(pos(7, -47), degreeHeading(0), slow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
-                    .strafeToSplineHeading(pos(-36, -36), degreeHeading(224))
+                    .strafeToSplineHeading(pos(-33, -31), degreeHeading(224))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire in sequence based on detected ball colors
@@ -399,11 +402,11 @@ public class Auto_Close extends LinearOpMode {
             Actions.runBlocking(
                 drive.actionBuilder(pose(-36, -36, 235))
                     //--- Align with balls
-                    .strafeToSplineHeading(pos(14, -50), degreeHeading(10))
+                    .strafeToSplineHeading(pos(14, -47), degreeHeading(10))
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(30, -50), degreeHeading(0), slow(), slowAccel())
+                    .strafeToSplineHeading(pos(30, -47), degreeHeading(0), slow(), slowAccel())
                     .build()
             );
         }
@@ -430,7 +433,7 @@ public class Auto_Close extends LinearOpMode {
                     .build()
             );
         }
-        else
+        else if (selectedPark == ParkPosition.FRONT)
         {
             //--- PARK in front (facing the goal)
             Actions.runBlocking(
@@ -442,6 +445,7 @@ public class Auto_Close extends LinearOpMode {
                     .build()
             );
         }
+        //--- NONE: Don't move, just stop where we are
 
         //--- Stop flywheel and intake
         Actions.runBlocking(new AutoActions.FlywheelStop(robot));
@@ -575,7 +579,7 @@ public class Auto_Close extends LinearOpMode {
                     .build()
             );
         }
-        else
+        else if (selectedPark == ParkPosition.FRONT)
         {
             //--- PARK in front (facing the goal)
             Actions.runBlocking(
@@ -588,6 +592,7 @@ public class Auto_Close extends LinearOpMode {
                     .build()
             );
         }
+        //--- NONE: Don't move, just stop where we are
 
         //--- Stop flywheel and intake
         Actions.runBlocking(new AutoActions.FlywheelStop(robot));
