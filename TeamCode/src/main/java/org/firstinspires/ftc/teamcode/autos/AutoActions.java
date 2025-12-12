@@ -249,6 +249,7 @@ public class AutoActions {
         private final double targetRPM;
         private final String label;
         private final java.util.List<String> fireLog;
+        private final ElapsedTime autoTimer;  // Global auto timer for timestamps
         private ElapsedTime timer;
         private ElapsedTime stableTimer;
         private int state = 0;
@@ -260,14 +261,25 @@ public class AutoActions {
         private static final double RPM_TOLERANCE = 75.0;
 
         public KickerWaitForSpeedThenFireSequence(RobotHardware robot, double targetRPM) {
-            this(robot, targetRPM, null, null);
+            this(robot, targetRPM, null, null, null);
         }
 
         public KickerWaitForSpeedThenFireSequence(RobotHardware robot, double targetRPM, String label, java.util.List<String> fireLog) {
+            this(robot, targetRPM, label, fireLog, null);
+        }
+
+        public KickerWaitForSpeedThenFireSequence(RobotHardware robot, double targetRPM, String label, java.util.List<String> fireLog, ElapsedTime autoTimer) {
             this.robot = robot;
             this.targetRPM = targetRPM;
             this.label = label;
             this.fireLog = fireLog;
+            this.autoTimer = autoTimer;
+        }
+
+        /** Get timestamp string for log entries (e.g., " 12s") */
+        private String getTimestamp() {
+            if (autoTimer == null) return "";
+            return String.format(" %.0fs", autoTimer.seconds());
         }
 
         @Override
@@ -311,7 +323,7 @@ public class AutoActions {
                         if (fireLog != null && label != null) {
                             String reason = timedOut && !stable ? "TIMEOUT" : "stable";
                             String seqInfo = String.format("Seq:%s", robot.kickers.getSequence());
-                            fireLog.add(String.format("%s START: target=%.0f (%s) %s", label, targetRPM, reason, seqInfo));
+                            fireLog.add(String.format("%s START: target=%.0f (%s) %s%s", label, targetRPM, reason, seqInfo, getTimestamp()));
                         }
                         
                         // Start the sequence firing
@@ -353,8 +365,8 @@ public class AutoActions {
                         }
                         
                         if (fireLog != null && label != null && lastLoggedStep >= 0) {
-                            fireLog.add(String.format("%s #%d (%s): %.0f/%.0f RPM %s/%s", 
-                                label, lastLoggedStep + 1, kickerName, actualRPM, target, detectedColor, expectedColor));
+                            fireLog.add(String.format("%s #%d (%s): %.0f/%.0f RPM %s/%s%s", 
+                                label, lastLoggedStep + 1, kickerName, actualRPM, target, detectedColor, expectedColor, getTimestamp()));
                         }
                         lastLoggedStep = currentStep;
                     }
@@ -381,8 +393,8 @@ public class AutoActions {
                             String detectedColor = (detected == org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN) ? "G" : "P";
                             String expectedColor = (expected == org.firstinspires.ftc.teamcode.hardware.Kickers.BallColor.GREEN) ? "G" : "P";
                             
-                            fireLog.add(String.format("%s #3 (%s): %.0f/%.0f RPM %s/%s", 
-                                label, kickerName, actualRPM, target, detectedColor, expectedColor));
+                            fireLog.add(String.format("%s #3 (%s): %.0f/%.0f RPM %s/%s%s", 
+                                label, kickerName, actualRPM, target, detectedColor, expectedColor, getTimestamp()));
                         }
                         state = 2;
                         return false;  // Done

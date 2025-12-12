@@ -20,6 +20,7 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.degreeHeading;
 import static org.firstinspires.ftc.teamcode.utils.AutoUtils.pose;
 import static org.firstinspires.ftc.teamcode.utils.AutoUtils.verySlow;
 import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slow;
+import static org.firstinspires.ftc.teamcode.utils.AutoUtils.medium;
 import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slowAccel;
 
 /**
@@ -70,11 +71,11 @@ public class Auto_Close extends LinearOpMode {
 
     //--- Parking position selection
     private enum ParkPosition { LEVER, FRONT, NONE }
-    private ParkPosition selectedPark = ParkPosition.NONE;  // Default to front
+    private ParkPosition selectedPark = ParkPosition.FRONT;  // Default to front
 
     //--- Stack selection (how many stacks to collect before parking)
     private enum StackSelection { PRELOADS_ONLY, STACK_1, STACK_2, STACK_3 }
-    private StackSelection selectedStacks = StackSelection.STACK_3;
+    private StackSelection selectedStacks = StackSelection.STACK_2;
     private boolean dpadLeftPressed = false;
     private boolean dpadRightPressed = false;
 
@@ -90,6 +91,9 @@ public class Auto_Close extends LinearOpMode {
     private ElapsedTime lightTimer = new ElapsedTime();
     private static final double ALLIANCE_DISPLAY_TIME = 3.0;  // Seconds to show alliance color
     private boolean allianceDisplayComplete = false;  // Flag to track if initial display is done
+
+    //--- Auto timer for logging when balls are fired
+    private ElapsedTime autoTimer = new ElapsedTime();
 
     @Override
     public void runOpMode() throws InterruptedException 
@@ -279,6 +283,9 @@ public class Auto_Close extends LinearOpMode {
 
         if (isStopRequested()) return;
 
+        //--- Start auto timer for fire log timestamps
+        autoTimer.reset();
+
         //--- Re-enable mode system for autonomous (intake will control lights)
         robot.lights.setModeEnabled(false);  // Keep manual control for ball colors
         
@@ -332,14 +339,15 @@ public class Auto_Close extends LinearOpMode {
         Actions.runBlocking(
             drive.actionBuilder(startPose)
                 //--- Start flywheel while driving
-                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM+100))
-                .waitSeconds(2.0)  //--- Give flywheel time to spin up
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
+                //.waitSeconds(2.0)  //--- Give flywheel time to spin up
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Align to shoot
                 .strafeToSplineHeading(pos(-33, -31), degreeHeading(227))
                 //--- Fire in sequence based on detected ball colors
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog))
+                .waitSeconds(1.0)  //--- Give flywheel time to spin up
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog, autoTimer))
                 .build()
         );
 
@@ -358,7 +366,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(-12, -40), degreeHeading(270), verySlow(), slowAccel())
+                    .strafeToSplineHeading(pos(-12, -40), degreeHeading(270), slow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
@@ -366,7 +374,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog, autoTimer))
                     .build()
             );
         }
@@ -385,7 +393,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(12, -40), degreeHeading(270), verySlow(), slowAccel())
+                    .strafeToSplineHeading(pos(12, -40), degreeHeading(270), slow(), slowAccel())
                     //--- Reverse intake while moving to shoot position
                     //.stopAndAdd(new AutoActions.IntakeReverse(robot))
                     //--- Align to shoot
@@ -393,7 +401,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog, autoTimer))
                     .build()
             );
         }
@@ -411,7 +419,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Turn on intake
                     .stopAndAdd(new AutoActions.IntakeOn(robot))
                     //--- Drive forward to pick up balls at half speed
-                    .strafeToSplineHeading(pos(36, -40), degreeHeading(270), verySlow(), slowAccel())
+                    .strafeToSplineHeading(pos(36, -40), degreeHeading(270), slow(), slowAccel())
                     .build()
             );
         }
@@ -479,7 +487,7 @@ public class Auto_Close extends LinearOpMode {
                 //--- Blue: (-33.5, -36.5, 227°) → Red: (+33.5, -36.5, 313°)
                 .strafeToSplineHeading(pos(33.5, -36.5), degreeHeading(313))
                 //--- Fire in sequence based on detected ball colors
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog))
+                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog, autoTimer))
                 .build()
         );
 
@@ -508,7 +516,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog, autoTimer))
                     .build()
             );
         }
@@ -537,7 +545,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog))
+                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog, autoTimer))
                     .build()
             );
         }
