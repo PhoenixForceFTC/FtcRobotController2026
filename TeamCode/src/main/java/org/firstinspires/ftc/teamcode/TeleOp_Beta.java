@@ -154,7 +154,7 @@ public class TeleOp_Beta extends LinearOpMode
         _robot.lights.initialize();
         
         //--- Start flywheel at idle speed so first shot is accurate
-        //_robot.flywheel.setVelocity(2600);
+        _robot.flywheel.setVelocity(2600);
 
         //------------------------------------------------------------------------------------------
         //--- Camera Mode (switch from PRE_MATCH to TELEOP)
@@ -179,6 +179,7 @@ public class TeleOp_Beta extends LinearOpMode
                     _robot.camera.getStoredDistanceFormatted(),
                     _robot.flywheel.getCurrentRPM(),
                     _robot.flywheel.getTargetRPM());
+            telemetry.addData("RPM Mod", "%+.0f RPM", _robot.camera.getVelocityAdjustment());
             telemetry.addData("Pattern", "%s (%s)", 
                     _robot.kickers.getSequence(),
                     _robot.camera.isSequenceDetected() ? "Detected" : "Default");
