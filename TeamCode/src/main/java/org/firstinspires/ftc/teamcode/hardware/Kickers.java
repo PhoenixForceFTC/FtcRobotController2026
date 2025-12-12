@@ -13,14 +13,28 @@ public class Kickers
 {
     //region --- Constants ---
     //--- Servo Positions (adjust these as needed for each kicker)
-    private static final double POSITION_LEFT_DOWN = 0.26;
-    private static final double POSITION_LEFT_UP = 0.46;
+    
+    //---- Beta ----
+    // private static final double POSITION_LEFT_DOWN = 0.26;
+    // private static final double POSITION_LEFT_UP = 0.46;
 
-    private static final double POSITION_MIDDLE_DOWN = 0.25;
-    private static final double POSITION_MIDDLE_UP = 0.45;
+    // private static final double POSITION_MIDDLE_DOWN = 0.25;
+    // private static final double POSITION_MIDDLE_UP = 0.45;
 
-    private static final double POSITION_RIGHT_DOWN = 0.25;
-    private static final double POSITION_RIGHT_UP = 0.45;
+    // private static final double POSITION_RIGHT_DOWN = 0.25;
+    // private static final double POSITION_RIGHT_UP = 0.45;
+
+    //---- Alpha ----
+    private static final double POSITION_LEFT_DOWN = 0.51;
+    private static final double POSITION_LEFT_UP = 0.71;
+
+    private static final double POSITION_MIDDLE_DOWN = 0.49;
+    private static final double POSITION_MIDDLE_UP = 0.71;
+
+    private static final double POSITION_RIGHT_DOWN = 0.49;
+    private static final double POSITION_RIGHT_UP = 0.68;
+
+    //TODO: add robot version to set values
 
     //--- Timing Settings (in seconds)
     private static final double KICK_HOLD_TIME = 0.3;      //--- How long to hold the kick position

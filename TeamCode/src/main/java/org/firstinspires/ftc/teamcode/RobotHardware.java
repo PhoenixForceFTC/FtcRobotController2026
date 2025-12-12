@@ -352,19 +352,7 @@ public class RobotHardware
             //--------------------------------------------------------------------------------------
             //--- ALPHA Robot Configuration
             //--------------------------------------------------------------------------------------
-            // Example: Flip servo directions if needed
-            // servoKickerLeft.setDirection(Servo.Direction.FORWARD);
-            
-            // Example: Adjust motor directions if needed
-            // motorIntake.setDirection(DcMotor.Direction.REVERSE);
-        }
-        else if (_robotVersion == BETA)
-        {
-            //--------------------------------------------------------------------------------------
-            //--- BETA Robot Configuration (Current Default)
-            //--------------------------------------------------------------------------------------
-            // All current hardware settings are configured for Beta
-            // Add any Beta-specific overrides here if needed
+            servoKickerMiddle.setDirection(Servo.Direction.REVERSE);
         }
     }
 
