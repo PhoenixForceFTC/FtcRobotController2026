@@ -419,23 +419,34 @@ public class AutoActions {
         private final RobotHardware robot;
         private final String label;
         private final java.util.List<String> fireLog;
+        private final double defaultRPM;
         private ElapsedTime timer;
         private ElapsedTime stableTimer;
         private int state = 0;
         private double timeFirstStable = -1;
         private double timeFirstAligned = -1;
+        private double timeFirstTargetSeen = -1;
         private boolean initialized = false;
         private double targetRPM = 0;
+        private double initialDistance = -1;
+        private int lastDetectedTag = -1;
         private static final double TIMEOUT = 6.0;          // Max time for aiming + spinup
         private static final double STABLE_TIME = 0.1;       // Must be at target continuously
         private static final double RPM_TOLERANCE = 75.0;    // Wider tolerance for faster firing
+        private static final double SCAN_WAIT_TIME = 1.5;    // Time to wait for camera to find target
+        private static final double DEFAULT_FALLBACK_RPM = 2250.0;  // Used if no defaultRPM provided
 
         public AutoAimAndFireSequence(RobotHardware robot) {
-            this(robot, null, null);
+            this(robot, DEFAULT_FALLBACK_RPM, null, null);
         }
 
         public AutoAimAndFireSequence(RobotHardware robot, String label, java.util.List<String> fireLog) {
+            this(robot, DEFAULT_FALLBACK_RPM, label, fireLog);
+        }
+
+        public AutoAimAndFireSequence(RobotHardware robot, double defaultRPM, String label, java.util.List<String> fireLog) {
             this.robot = robot;
+            this.defaultRPM = defaultRPM;
             this.label = label;
             this.fireLog = fireLog;
         }
@@ -454,21 +465,71 @@ public class AutoActions {
                 // Enable auto-alignment for firing
                 robot.camera.enableAutoAlignForFiring();
                 
-                // Get distance-based RPM (1-ball for sequence firing)
+                // Log initial state for debugging
+                initialDistance = robot.camera.getStoredDistanceInches();
+                lastDetectedTag = robot.camera.getLastDetectedTag();
+                
+                // Immediately set flywheel to RPM based on stored distance (if available)
+                // This lets flywheel spin up while camera is finding the target
+                if (initialDistance > 0) {
+                    targetRPM = robot.camera.getSuggestedVelocity(1);
+                    if (targetRPM > 0) {
+                        robot.flywheel.setVelocity(targetRPM);
+                    }
+                }
+                
+                // Log initialization info
+                if (fireLog != null && label != null) {
+                    fireLog.add(String.format("%s INIT: dist=%.0f\" tag=%d rpm=%.0f mode=%s", 
+                        label, initialDistance, lastDetectedTag, targetRPM, robot.camera.getScanMode()));
+                }
+            }
+            
+            // Always run camera to process detections and update lights
+            robot.camera.run();
+            robot.flywheel.run();
+            
+            // Track when we first see a target
+            int currentTag = robot.camera.getLastDetectedTag();
+            boolean seeingTarget = (currentTag == 2 || currentTag == 3);  // Red=2, Blue=3
+            if (seeingTarget && timeFirstTargetSeen < 0) {
+                timeFirstTargetSeen = timer.seconds();
+                
+                // Now that we see a target, get the distance-based RPM
+                double distance = robot.camera.getStoredDistanceInches();
                 targetRPM = robot.camera.getSuggestedVelocity(1);
                 if (targetRPM <= 0) {
-                    // Fallback if no distance reading - use a reasonable default
-                    targetRPM = 2400;
+                    // Fallback if no distance reading - use provided default
+                    targetRPM = defaultRPM;
                 }
                 robot.flywheel.setVelocity(targetRPM);
+                
+                if (fireLog != null && label != null) {
+                    fireLog.add(String.format("%s TARGET: tag=%d dist=%.0f\" rpm=%.0f", 
+                        label, currentTag, distance, targetRPM));
+                }
+            }
+            
+            // If we haven't seen a target yet and haven't set RPM, use initial distance or default
+            if (targetRPM == 0) {
+                // Wait a bit for camera to find target before using fallback
+                if (timer.seconds() > SCAN_WAIT_TIME) {
+                    double distance = robot.camera.getStoredDistanceInches();
+                    targetRPM = robot.camera.getSuggestedVelocity(1);
+                    if (targetRPM <= 0) {
+                        targetRPM = defaultRPM;  // Use provided default
+                    }
+                    robot.flywheel.setVelocity(targetRPM);
+                    
+                    if (fireLog != null && label != null) {
+                        fireLog.add(String.format("%s FALLBACK: no target seen, dist=%.0f\" rpm=%.0f", 
+                            label, distance, targetRPM));
+                    }
+                }
             }
 
             switch (state) {
                 case 0:  // Wait for alignment AND flywheel to be ready
-                    // Run camera and flywheel updates
-                    robot.camera.run();
-                    robot.flywheel.run();
-                    
                     // Check alignment status
                     boolean aligned = robot.camera.isAligned();
                     if (aligned && timeFirstAligned < 0) {
@@ -478,7 +539,7 @@ public class AutoActions {
                     // Check flywheel status
                     double currentRPM = robot.flywheel.getCurrentRPM();
                     double flywheelTarget = robot.flywheel.getTargetRPM();
-                    boolean atTarget = Math.abs(currentRPM - flywheelTarget) <= RPM_TOLERANCE;
+                    boolean atTarget = flywheelTarget > 0 && Math.abs(currentRPM - flywheelTarget) <= RPM_TOLERANCE;
                     
                     if (!atTarget) {
                         stableTimer.reset();
@@ -494,6 +555,8 @@ public class AutoActions {
                     if ((aligned && flywheelReady) || timedOut) {
                         // Log the firing info
                         double firingRPM = robot.flywheel.getCurrentRPM();
+                        double firingTarget = robot.flywheel.getTargetRPM();
+                        double firingDistance = robot.camera.getStoredDistanceInches();
                         double totalTime = timer.seconds();
                         
                         // Read ball colors from intake and configure kickers
@@ -503,16 +566,20 @@ public class AutoActions {
                         configureSequenceFromCamera();
                         
                         if (fireLog != null && label != null) {
-                            String reason = timedOut ? " (TIMEOUT!)" : " (ready)";
+                            String reason = timedOut ? "TIMEOUT" : "ready";
+                            String targetInfo = timeFirstTargetSeen >= 0 
+                                ? String.format("target@%.2fs", timeFirstTargetSeen)
+                                : "NO TARGET!";
                             String alignInfo = timeFirstAligned >= 0 
                                 ? String.format("align@%.2fs", timeFirstAligned)
-                                : "never aligned";
+                                : "no align";
                             String rpmInfo = timeFirstStable >= 0 
-                                ? String.format("rpm@%.2fs", timeFirstStable)
-                                : "never stable";
-                            String seqInfo = String.format(" Seq:%s", robot.kickers.getSequence());
-                            fireLog.add(String.format("%s: %.0f RPM [%s, %s] fire@%.2fs%s%s", 
-                                label, firingRPM, alignInfo, rpmInfo, totalTime, reason, seqInfo));
+                                ? String.format("stable@%.2fs", timeFirstStable)
+                                : "not stable";
+                            fireLog.add(String.format("%s FIRE: actual=%.0f/target=%.0f dist=%.0f\" [%s %s %s] @%.2fs (%s) Seq:%s", 
+                                label, firingRPM, firingTarget, firingDistance, 
+                                targetInfo, alignInfo, rpmInfo, 
+                                totalTime, reason, robot.kickers.getSequence()));
                         }
                         
                         // Start the sequence firing
@@ -520,9 +587,11 @@ public class AutoActions {
                         state = 1;
                     }
                     
+                    telemetryPacket.put("Tag Seen", currentTag);
+                    telemetryPacket.put("Distance", robot.camera.getStoredDistanceInches());
                     telemetryPacket.put("Aligned", aligned);
-                    telemetryPacket.put("Flywheel Target", robot.flywheel.getTargetRPM());
-                    telemetryPacket.put("Flywheel Current", robot.flywheel.getCurrentRPM());
+                    telemetryPacket.put("Flywheel Target", flywheelTarget);
+                    telemetryPacket.put("Flywheel Current", currentRPM);
                     telemetryPacket.put("Flywheel Ready", flywheelReady);
                     telemetryPacket.put("Camera Align", robot.camera.getAlignmentInfo());
                     return true;
@@ -539,6 +608,7 @@ public class AutoActions {
                         return false;  // Done
                     }
                     telemetryPacket.put("Sequence", "Firing...");
+                    telemetryPacket.put("Flywheel Current", robot.flywheel.getCurrentRPM());
                     return true;
 
                 default:

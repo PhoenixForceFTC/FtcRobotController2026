@@ -3,6 +3,7 @@ package org.firstinspires.ftc.teamcode.autos;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.MecanumDrive;
@@ -42,15 +43,16 @@ import static org.firstinspires.ftc.teamcode.utils.AutoUtils.slowAccel;
  * 3. Opens second stack, picks up, shoots (7-9)
  * 4. Picks up third stack, parks
  */
+@Disabled
 @Autonomous(name = "Auto: Close", group = "Auto")
-public class Auto_Close extends LinearOpMode {
-
+public class Auto_Close_Backup extends LinearOpMode 
+{
     //--- Robot hardware
     private RobotHardware robot;
     
     //--- Flywheel speed for shooting (RPM)
     //--- Firing in sequence (one ball at a time) uses single-ball RPM
-    private static final double SHOOT_RPM = 2250.0; // 2350
+    private static final double SHOOT_RPM = 2000.0; // 2350
 
     //--- Pre-match camera positions for sequence detection (tune based on starting position)
     //--- Yaw: 0.0 = full right, 0.5 = center, 1.0 = full left
@@ -332,7 +334,7 @@ public class Auto_Close extends LinearOpMode {
                 //--- Switch camera to TeleOp mode (target detection)
                 .stopAndAdd(new AutoActions.CameraSetTeleOpMode(robot))
                 //--- Auto-aim and fire in sequence
-                .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, SHOOT_RPM, "Preloads", fireLog))
+                .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, "Preloads", fireLog))
                 .build()
         );
 
@@ -358,7 +360,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Auto-aim and fire in sequence
-                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog))
+                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, "Stack 1", fireLog))
                     .build()
             );
         }
@@ -384,7 +386,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Auto-aim and fire in sequence
-                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog))
+                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, "Stack 2", fireLog))
                     .build()
             );
         }
@@ -470,7 +472,7 @@ public class Auto_Close extends LinearOpMode {
                 //--- Switch camera to TeleOp mode (target detection)
                 .stopAndAdd(new AutoActions.CameraSetTeleOpMode(robot))
                 //--- Auto-aim and fire in sequence
-                .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, SHOOT_RPM, "Preloads", fireLog))
+                .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, "Preloads", fireLog))
                 .build()
         );
 
@@ -499,7 +501,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Auto-aim and fire in sequence
-                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog))
+                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, "Stack 1", fireLog))
                     .build()
             );
         }
@@ -528,7 +530,7 @@ public class Auto_Close extends LinearOpMode {
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
                     //--- Auto-aim and fire in sequence
-                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog))
+                    .stopAndAdd(new AutoActions.AutoAimAndFireSequence(robot, "Stack 2", fireLog))
                     .build()
             );
         }

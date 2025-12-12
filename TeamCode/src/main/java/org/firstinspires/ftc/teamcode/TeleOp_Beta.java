@@ -154,7 +154,7 @@ public class TeleOp_Beta extends LinearOpMode
         _robot.lights.initialize();
         
         //--- Start flywheel at idle speed so first shot is accurate
-        _robot.flywheel.setVelocity(2600);
+        //_robot.flywheel.setVelocity(2600);
 
         //------------------------------------------------------------------------------------------
         //--- Camera Mode (switch from PRE_MATCH to TELEOP)
@@ -192,7 +192,7 @@ public class TeleOp_Beta extends LinearOpMode
             //--- Intake
             //------------------------------------------------------------------------------------------
             _robot.intake.controlIntake();
-            //_robot.intake.testColorSensors();  //--- Show color sensor values for tuning
+            _robot.intake.testColorSensors();  //--- Show color sensor values for tuning
 
             //------------------------------------------------------------------------------------------
             //--- Kickers
