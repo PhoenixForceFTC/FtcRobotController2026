@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.autos;
 
+import com.acmerobotics.roadrunner.Action;
 import com.acmerobotics.roadrunner.Pose2d;
 import com.acmerobotics.roadrunner.ftc.Actions;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -50,9 +51,10 @@ public class Auto_Close extends LinearOpMode {
     //--- Robot hardware
     private RobotHardware robot;
     
-    //--- Flywheel speed for shooting (RPM)
-    //--- Firing in sequence (one ball at a time) uses single-ball RPM
-    private static final double SHOOT_RPM = 2250.0; // 2350
+    //--- Flywheel speeds for shooting (RPM) - varies by ball count
+    private static final double SHOOT_1_RPM = 2250.0;  // Single ball
+    private static final double SHOOT_2_RPM = 2450.0;  // Two balls
+    private static final double SHOOT_3_RPM = 2650.0;  // Three balls
 
     //--- Pre-match camera positions for sequence detection (tune based on starting position)
     //--- Yaw: 0.0 = full right, 0.5 = center, 1.0 = full left
@@ -78,6 +80,11 @@ public class Auto_Close extends LinearOpMode {
     private StackSelection selectedStacks = StackSelection.STACK_2;
     private boolean dpadLeftPressed = false;
     private boolean dpadRightPressed = false;
+
+    //--- Firing mode selection (sequence = one at a time based on color, all = fire all at once)
+    private enum FiringMode { SEQUENCE, ALL }
+    private FiringMode selectedFiringMode = FiringMode.ALL;
+    private boolean rightBumperPressed = false;
 
     //--- Detected ball sequence
     private Camera.BallSequence detectedSequence = Camera.BallSequence.UNKNOWN;
@@ -185,6 +192,21 @@ public class Auto_Close extends LinearOpMode {
                 selectedPark = ParkPosition.NONE;
             }
 
+            //--- Toggle firing mode with right bumper (with debounce)
+            if (gamepad2.right_bumper)
+            {
+                if (!rightBumperPressed)
+                {
+                    rightBumperPressed = true;
+                    selectedFiringMode = (selectedFiringMode == FiringMode.SEQUENCE) 
+                        ? FiringMode.ALL : FiringMode.SEQUENCE;
+                }
+            }
+            else
+            {
+                rightBumperPressed = false;
+            }
+
             //--- Adjust start delay with dpad up/down (with debounce)
             if (gamepad2.dpad_up)
             {
@@ -266,6 +288,10 @@ public class Auto_Close extends LinearOpMode {
             telemetry.addData("Dpad Left/Right", "Fewer/More stacks");
             telemetry.addData(">>> COLLECT", selectedStacks);
             //telemetry.addLine("");
+            telemetry.addData("=== FIRING MODE ===", "");
+            telemetry.addData("RB", "Toggle SEQUENCE/ALL");
+            telemetry.addData(">>> FIRE", selectedFiringMode);
+            //telemetry.addLine("");
             telemetry.addData("=== START DELAY ===", "");
             telemetry.addData("Dpad Up/Down", "+/- 1 second");
             telemetry.addData(">>> DELAY", "%d seconds", startDelaySeconds);
@@ -338,16 +364,16 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(startPose)
-                //--- Start flywheel while driving
-                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
+                //--- Start flywheel while driving (use highest RPM for 3 balls)
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_3_RPM-50))
                 //.waitSeconds(2.0)  //--- Give flywheel time to spin up
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Align to shoot
                 .strafeToSplineHeading(pos(-33, -31), degreeHeading(227))
-                //--- Fire in sequence based on detected ball colors
+                //--- Fire based on selected firing mode
                 .waitSeconds(1.0)  //--- Give flywheel time to spin up
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog, autoTimer))
+                .stopAndAdd(getFireAction("Preloads"))
                 .build()
         );
 
@@ -373,8 +399,8 @@ public class Auto_Close extends LinearOpMode {
                     .strafeToSplineHeading(pos(-33, -31), degreeHeading(220))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
-                    //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog, autoTimer))
+                    //--- Fire based on selected firing mode
+                    .stopAndAdd(getFireAction("Stack 1"))
                     .build()
             );
         }
@@ -400,8 +426,8 @@ public class Auto_Close extends LinearOpMode {
                     .strafeToSplineHeading(pos(-33, -31), degreeHeading(224))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
-                    //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog, autoTimer))
+                    //--- Fire based on selected firing mode
+                    .stopAndAdd(getFireAction("Stack 2"))
                     .build()
             );
         }
@@ -483,14 +509,14 @@ public class Auto_Close extends LinearOpMode {
         //========================================================================
         Actions.runBlocking(
             drive.actionBuilder(startPose)
-                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_RPM))
+                .stopAndAdd(new AutoActions.FlywheelSetSpeed(robot, SHOOT_3_RPM))
                 .waitSeconds(2.0)
                 //--- Programmable delay (set during init with dpad up/down)
                 .waitSeconds(startDelaySeconds)
                 //--- Blue: (-33.5, -36.5, 227°) → Red: (+33.5, -36.5, 313°)
                 .strafeToSplineHeading(pos(33.5, -36.5), degreeHeading(313))
-                //--- Fire in sequence based on detected ball colors
-                .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Preloads", fireLog, autoTimer))
+                //--- Fire based on selected firing mode
+                .stopAndAdd(getFireAction("Preloads"))
                 .build()
         );
 
@@ -518,8 +544,8 @@ public class Auto_Close extends LinearOpMode {
                     .strafeToSplineHeading(pos(36, -36), degreeHeading(320))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
-                    //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 1", fireLog, autoTimer))
+                    //--- Fire based on selected firing mode
+                    .stopAndAdd(getFireAction("Stack 1"))
                     .build()
             );
         }
@@ -547,8 +573,8 @@ public class Auto_Close extends LinearOpMode {
                     .strafeToSplineHeading(pos(36, -36), degreeHeading(316))
                     //--- Stop intake
                     .stopAndAdd(new AutoActions.IntakeStop(robot))
-                    //--- Fire in sequence based on detected ball colors
-                    .stopAndAdd(new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_RPM, "Stack 2", fireLog, autoTimer))
+                    //--- Fire based on selected firing mode
+                    .stopAndAdd(getFireAction("Stack 2"))
                     .build()
             );
         }
@@ -680,6 +706,26 @@ public class Auto_Close extends LinearOpMode {
             case NONE:
             default:
                 return Lights.Color.OFF;
+        }
+    }
+
+    //========================================================================
+    //--- FIRING ACTION HELPER
+    //========================================================================
+    /**
+     * Returns the appropriate firing action based on the selected firing mode.
+     * SEQUENCE: Fires balls one at a time based on detected color (green first)
+     * ALL: Fires all balls at once (faster but no color sorting)
+     */
+    private Action getFireAction(String label)
+    {
+        if (selectedFiringMode == FiringMode.SEQUENCE)
+        {
+            return new AutoActions.KickerWaitForSpeedThenFireSequence(robot, SHOOT_1_RPM, label, fireLog, autoTimer);
+        }
+        else
+        {
+            return new AutoActions.KickerWaitForSpeedThenFireAll(robot, SHOOT_1_RPM, SHOOT_2_RPM, SHOOT_3_RPM, label, fireLog);
         }
     }
 
